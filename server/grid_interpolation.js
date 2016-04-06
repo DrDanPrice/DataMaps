@@ -13,6 +13,10 @@
 var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
 //https://docs.mongodb.org/manual/reference/operator/aggregation/geoNear/ - for distance; it has to be first in pipeline and has a distancefield on output
     //gather all sites within include_distance, should I still group by 5min epoch
+    
+    //for example: { $geoNear: { near: [12.492269, 41.890169], distanceField: "distance", spherical: true, limit: 3 } } ]);
+    //http://www.tamas.io/geospatial-features-of-mongodb/
+    //http://www.doctrine-project.org/api/mongodb/1.2/class-Doctrine.MongoDB.Aggregation.Stage.GeoNear.html
     var interp_pipeline = [
         {
             $match: {
