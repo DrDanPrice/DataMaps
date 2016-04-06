@@ -70,6 +70,8 @@ function selectedPoints(e) {
             selectedPoint.site = Router.current().params._id;
             selectedPoint.instrument = point.series.chart.title.textStr;
             selectedPoint.measurement = point.series.name;
+            selectedPoint.id = point.series.chart.title.textStr + '_' + point.series.name + '_' + point.x;
+            point.id = selectedPoint.id;
             points.push(selectedPoint);
         }
     });
@@ -102,6 +104,27 @@ function selectedPoints(e) {
             e.points[0].series.chart.redraw();
         }
     }).modal('show');
+
+    $('#editPointsModal table tr .close').click(function (event) {
+        // Get X value stored in the data-id attribute of the button
+        var id = $(event.currentTarget).data('id');
+        console.log(id);
+
+        // Query the local selected points db for that point, and remove it
+        // This triggers a reactive render of the EditPoints
+        EditPoints.remove({ id: id });
+
+        // Also remove the point from the HighCharts selection
+        // (so it doesn't change color temporarily on approval)
+        for (var i = 0; i < e.points.length; i++) {
+            var p = e.points[i];
+            if (p.id === id) {
+                p.select(false);
+                e.points.splice(i, 1);
+                break;
+            }
+        }
+    });
 }
 
 
@@ -130,24 +153,6 @@ Template.site.onRendered(function () {
         console.log('auto counter:', autoCounter);
         console.log('site: ', Router.current().params._id, 'start: ', startEpoch.get(), 'end: ', endEpoch.get());
         Meteor.subscribe('dataSeries', Router.current().params._id, startEpoch.get(), endEpoch.get());
-
-        Meteor.subscribe('aggregatedata5min', Router.current().params._id, startEpoch.get(), endEpoch.get(), function () {
-
-            // Find in items and observe changes
-            var items = AggrData.find().observeChanges({
-
-                // When collection changed, find #results element and publish result inside it
-                changed: function (res) {
-                    //console.log('changed: ', res);
-                    //document.getElementById("results").innerHTML = JSON.stringify(res);
-                },
-                added: function (res) {
-                    //console.log('added: ', res);
-                    //document.getElementById("results").innerHTML = JSON.stringify(res);
-                }
-            });
-        });
-
 
         var seriesOptions = {};
         Charts.remove({});
@@ -399,7 +404,9 @@ Template.editPoints.helpers({
     },
     numFlagsWillChange: function () {
         var newFlag = selectedFlag.get();
-        if (newFlag === null || isNaN(newFlag)) return 0;
+        if (newFlag === null || isNaN(newFlag)) {
+            return 0;
+        }
         return EditPoints.find({ 'flag.val': { $not: newFlag } }).count();
     },
     numPointsSelected: function () {
@@ -419,11 +426,13 @@ Template.registerHelper('formatDate', function (epoch) {
 });
 
 Template.site.helpers({
-    site: function () {
-        return Sites.findOne({
-            _id: Router.current().params._id
+    sitename: function () {
+        var site = Sites.findOne({
+            AQSID: Router.current().params._id
         });
+        return site["site name"];
     },
+    
     selectedDate: function () {
         return moment.unix(endEpoch.get()).format('YYYY-MM-DD');
     },
