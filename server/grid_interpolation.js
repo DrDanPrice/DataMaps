@@ -1,11 +1,3 @@
-//required packages
-// var csvmodule = Meteor.npmRequire('csv');
-// var fs = Meteor.npmRequire('fs');
-//get sites in region; filter by if they have the pollutant of interest
-//divide bbox (leftbottom[long/lat]/righttop[long/lat]) by gridstep;
-//for each gridpt, calculate distance to each station and rank - (should it have cutoff?)
-
-
 //create wind system for that grid (could use different pipeline for more wind stations, later)
 //   gets avg of speed and angle of wind for that time, not using tail, etc. - incorporated in gas step
 //calculate pollutant/gas value using inverse square weighting, and weight for wind
