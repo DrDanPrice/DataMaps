@@ -21,20 +21,17 @@ var interpolate2grid = function (center, include_distance, gridstep, pollutant, 
         {
             $match: {
                 $and: [{
-                    epoch: {
-                        $gt: parseInt(startEpoch, 10),
-                        $lt: parseInt(endEpoch, 10)
+                    site: {
+                    	$geoNear: {
+                    		near: center,
+							distanceField: "distance",
+							spherical: true
+                    	}
                     }
-                }, {
-				  site: {
-				     $geoWithin: {
-				        $box: [
-				          [ leftbottom ],  //longitude first
-				          [ righttop ] //<upper right coordinates>
-				        ]
-				     }
-				  }
-				},{
+					epoch: {
+						$gt: parseInt(startEpoch, 10),
+						$lt: parseInt(endEpoch, 10)
+					}, {
 				  pollutant: pollutant
 				}
 			]
@@ -69,7 +66,7 @@ var interpolate2grid = function (center, include_distance, gridstep, pollutant, 
 
 
 Meteor.methods({
-    new5minAggreg: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
+    new5minInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
         logger.info('Helper called interpolate2grid for pollutant at center with distance: ', pollutant, ' start: ', startEpoch, ' end: ', endEpoch, center, include_distance);
         interpolate2grid(center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch);
     }
