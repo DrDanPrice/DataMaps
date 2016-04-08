@@ -16,7 +16,37 @@
 //http://www.irceline.be/~celinair/rio/rio_corine.pdf using landcover with a kriging system
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
-
+var makeBaseGrid = function (bbox, gridstep){
+  let sites = Sites.find(
+      {
+        loc: {
+        $geoWithin: {
+          $geometry: {
+            type : "Polygon" ,
+            coordinates: [ bbox ]
+            }
+          }
+        }
+      });
+  let topPt = _.min(bbox, function(pt){return pt[0]});  //mongo likes long/lat
+  let leftPt = _.min(bbox, function(pt){return pt[1]});
+  let bottomPt = _.max(bbox, function(pt){return pt[0]});
+  let rightPt = _.max(bbox, function(pt){return pt[1]});
+  //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
+  //for now, assume it's a square.
+  let gridPoints = [];
+  let horiz = _.range(leftPt,rightPt,gridstep);
+  let vertical = _.range(topPt,bottomPt,gridstep);
+  _.each(horiz, function({
+    _.each(vertical, function({
+      gridPt = {loc:{coordinates:[vertical,horiz]}};
+        _.each(sites, function ({
+          gridPt[siteId] = {angle:{calculate angle},distance:{calculate distance}}
+        }));
+      gridPoints.push(gridPt); //or put it in a collection??
+    }))
+  }));
+}
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
 var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
