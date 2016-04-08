@@ -1,3 +1,12 @@
+//create Griddata - for each point on the map - basically creates a linear equation at that point, relating it to a set of values
+//For weightedistance multiplier - top 50 sites? calculate angle and distance
+//for wind, it would be sitewinddir - gridpt2sitedir; then speed is a multiplier? along with inverse distance sq?
+//for pollutant, it's the inverse distance squared
+//for process, perhaps the ones that will have no values are erased?
+
+//create the grid in one step - and then can have a step that uses it, to populate according to the values that change according to the site values
+
+
 //create wind system for that grid (could use different pipeline for more wind stations, later)
 //   gets avg of speed and angle of wind for that time, not using tail, etc. - incorporated in gas step
 //calculate pollutant/gas value using inverse square weighting, and weight for wind
@@ -11,12 +20,6 @@
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
 var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
-//https://docs.mongodb.org/manual/reference/operator/aggregation/geoNear/ - for distance; it has to be first in pipeline and has a distancefield on output
-    //gather all sites within include_distance, should I still group by 5min epoch
-    
-    //for example: { $geoNear: { near: [12.492269, 41.890169], distanceField: "distance", spherical: true, limit: 3 } } ]);
-    //http://www.tamas.io/geospatial-features-of-mongodb/
-    //http://www.doctrine-project.org/api/mongodb/1.2/class-Doctrine.MongoDB.Aggregation.Stage.GeoNear.html
     var interp_pipeline = [
         {
             $match: {
@@ -24,26 +27,36 @@ var interpolate2grid = function (center, include_distance, gridstep, pollutant, 
                     site: {
                     	$geoNear: {
                     		near: center,
-							distanceField: "distance",
-							spherical: true
+                        maxDistance: include_distance,
+							          distanceField: "distance",
+                        //distanceMultiplier: 3963.2, //6,378.1 for km; but maybe use radians???
+							          spherical: true
                     	}
-                    }
-					epoch: {
-						$gt: parseInt(startEpoch, 10),
-						$lt: parseInt(endEpoch, 10)
-					}, {
-				  pollutant: pollutant
-				}
-			]
+                    },
+					               epoch: {
+						                     $gt: parseInt(startEpoch, 10),
+						                     $lt: parseInt(endEpoch, 10)
+					                },
+				                pollutant: pollutant
+			                 ]
             }
         }
 	];
+  GridData.aggregate(interp_pipeline,
+    Meteor.bindEnvironment(
+        function (err, result) {
+            _.each(result, function (e) {} )
+          }
+        )
+  );
 
     LiveData.aggregate(interp_pipeline,
         Meteor.bindEnvironment(
             function (err, result) {
                 _.each(result, function (e) {
-                    var subObj = {};
+                    let grids = {};
+                    let sites = {};
+                    //let sites['pollutants'] = {};
                     subObj._id = e.site + '_' + e._id;
                     subObj.site = e.site;
                     subObj.epoch = e._id;
@@ -51,7 +64,7 @@ var interpolate2grid = function (center, include_distance, gridstep, pollutant, 
                     var aggrSubTypes = {}; //hold aggregated data
 
                     for (var i = 0; i < subTypes.length; i++) {
-                    
+
                     //transform aggregated data to generic data format using subtypes etc.
                     var newaggr = {};
 					}
@@ -66,7 +79,7 @@ var interpolate2grid = function (center, include_distance, gridstep, pollutant, 
 
 
 Meteor.methods({
-    new5minInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
+    newInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
         logger.info('Helper called interpolate2grid for pollutant at center with distance: ', pollutant, ' start: ', startEpoch, ' end: ', endEpoch, center, include_distance);
         interpolate2grid(center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch);
     }
