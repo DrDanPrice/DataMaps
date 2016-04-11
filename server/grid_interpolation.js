@@ -46,7 +46,22 @@ var makeBaseGrid = function (bbox, gridstep){
       gridPoints.push(gridPt); //or put it in a collection??
     }))
   }));
+};
+
+//using haversine
+var calcDistance = function(lng1,lng2,lat1,lat2){
+  let radConvert = Math.PI/180;
+  let radLat = (lat1-lat2) * radConvert;
+  let radLng = (lng1-lng2) * radConvert;
+  var a =
+    Math.sin(radLat/2) * Math.sin(radLat/2) +
+    Math.cos(lat1*radConvert) * Math.cos(lat2*radConvert) *
+    Math.sin(radLng/2) * Math.sin(radLng/2)
+    ;
+  let dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return dist;
 }
+
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
 var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
