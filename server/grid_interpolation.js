@@ -16,8 +16,8 @@
 //http://www.irceline.be/~celinair/rio/rio_corine.pdf using landcover with a kriging system
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
-var makeBaseGrid = function (bbox, gridstep){
-  let sites = Sites.find(
+makeBaseGrid = function (bbox, gridstep){
+  var sites = Monitors.find(
       {
         loc: {
         $geoWithin: {
@@ -28,43 +28,69 @@ var makeBaseGrid = function (bbox, gridstep){
           }
         }
       });
-  let topPt = _.min(bbox, function(pt){return pt[0]});  //mongo likes long/lat
-  let leftPt = _.min(bbox, function(pt){return pt[1]});
-  let bottomPt = _.max(bbox, function(pt){return pt[0]});
-  let rightPt = _.max(bbox, function(pt){return pt[1]});
+      //sites.forEach(function(val,k){logger.info(val)})
+  var topPt = _.min(bbox, function(pt,i){return pt[1]});  //mongo likes long/lat
+  var leftPt = _.min(bbox, function(pt){return pt[0]});
+  var bottomPt = _.max(bbox, function(pt){return pt[1]});
+  var rightPt = _.max(bbox, function(pt){return pt[0]});
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
-  let gridPoints = [];
-  let horiz = _.range(leftPt,rightPt,gridstep);
-  let vertical = _.range(topPt,bottomPt,gridstep);
-  _.each(horiz, function({
-    _.each(vertical, function({
-      gridPt = {loc:{coordinates:[vertical,horiz]}};
-        _.each(sites, function ({
-          gridPt[siteId] = {angle:{calculate angle},distance:{calculate distance}}
-        }));
+  var gridPoints = [];
+  var horiz = _.range(parseFloat(leftPt),parseFloat(rightPt),parseFloat(gridstep));
+  var vertical = _.range(parseFloat(bottomPt),parseFloat(topPt),parseFloat(gridstep));
+  logger.info('vertical',vertical)
+  horiz.forEach( function(lat,i){
+     vertical.forEach( function(lng,j){
+      gridPt = {loc:{coordinates:[lng,lat]}};
+        sites.forEach(function(site,k){
+          //logger.info('coord',site.loc.coordinates[0])
+          logger.info(calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat))
+          gridPt[site._id] = {angle:{'calculate angle':1},distance:{'calculate distance':2}}
+        });
       gridPoints.push(gridPt); //or put it in a collection??
-    }))
-  }));
+     })
+  });
+  return gridPoints
 };
 
 //using haversine
 var calcDistance = function(lng1,lng2,lat1,lat2){
-  let radConvert = Math.PI/180;
-  let radLat = (lat1-lat2) * radConvert;
-  let radLng = (lng1-lng2) * radConvert;
+  var radConvert = Math.PI/180;
+  var radLat = (lat1-lat2) * radConvert;
+  var radLng = (lng1-lng2) * radConvert;
   var a =
     Math.sin(radLat/2) * Math.sin(radLat/2) +
     Math.cos(lat1*radConvert) * Math.cos(lat2*radConvert) *
     Math.sin(radLng/2) * Math.sin(radLng/2)
     ;
-  let dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return dist;
+  var dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var angle = Math.atan2(radLat,radLng);
+  return [dist,angle];
 }
 
+/*Sites.aggregate(
+  {
+    loc: {
+    $geoWithin: {
+      $geometry: {
+        type : "Polygon" ,
+        coordinates: [ 0,0,100,100 ]
+        }
+      }
+    }
+  },
+  Meteor.bindEnvironment(
+      function (err, result) {
+          _.each(result, function (e) {
+            logger.info(result)
+          } )
+        }
+      )
+)*/
+Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,29.0]],.10)});
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
-var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
+/*var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
     var interp_pipeline = [
         {
             $match: {
@@ -121,7 +147,7 @@ var interpolate2grid = function (center, include_distance, gridstep, pollutant, 
         )
     );
 };
-
+*/
 
 Meteor.methods({
     newInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {

@@ -47,7 +47,7 @@ Meteor.publish('dataSeries', function (site, startEpoch, endEpoch) {
                 var lines = result[0].series;
                 _.each(lines, function (line) {
                     var epoch = line.epoch;
-                    _.each(line.subTypes, function (subKey, subType) { //subType is O3, etc.              
+                    _.each(line.subTypes, function (subKey, subType) { //subType is O3, etc.
                         if (!poll5Data[subType]) {
                             poll5Data[subType] = {};
                         }
@@ -218,7 +218,7 @@ Meteor.publish('compositeSeries', function (siteList, startEpoch, endEpoch) {
             if (result.length > 0) {
                 _.each(result, function (line) {
                     var epoch = line.epoch;
-                    _.each(line.subTypes, function (subKey, subType) { //subType is O3, etc.              
+                    _.each(line.subTypes, function (subKey, subType) { //subType is O3, etc.
                         if (!poll5Data[subType]) {
                             poll5Data[subType] = {};
                         }
@@ -265,6 +265,11 @@ Meteor.publish('sites', function () {
         'incoming': {
             $exists: true
         }
+    });
+});
+
+Meteor.publish('monitors', function () {
+    return Monitors.find({
     });
 });
 
