@@ -44,6 +44,7 @@ makeBaseGrid = function (bbox, gridstep){
       gridPt = {loc:{coordinates:[lng,lat]}};
         sites.forEach(function(site,k){
           //logger.info('coord',site.loc.coordinates[0])
+          logger.info('distance',site.loc.coordinates[0],lng,site.loc.coordinates[1],lat)
           logger.info(calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat))
           gridPt[site._id] = {angle:{'calculate angle':1},distance:{'calculate distance':2}}
         });
