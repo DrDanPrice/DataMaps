@@ -38,19 +38,19 @@ makeBaseGrid = function (bbox, gridstep){
   var gridPoints = [];
   var horiz = _.range(parseFloat(leftPt),parseFloat(rightPt),parseFloat(gridstep));
   var vertical = _.range(parseFloat(bottomPt),parseFloat(topPt),parseFloat(gridstep));
-  logger.info('vertical',vertical)
+  //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
   horiz.forEach( function(lat,i){
      vertical.forEach( function(lng,j){
       gridPt = {loc:{coordinates:[lng,lat]}};
+      console.log('single point',gridPt)
         sites.forEach(function(site,k){
-          //logger.info('coord',site.loc.coordinates[0])
-          logger.info('distance',site.loc.coordinates[0],lng,site.loc.coordinates[1],lat)
-          logger.info(calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat))
-          gridPt[site._id] = {angle:{'calculate angle':1},distance:{'calculate distance':2}}
+          distAng = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat);
+          gridPt[site._id] = {angle:distAng[1],distance:distAng[0]};
         });
       gridPoints.push(gridPt); //or put it in a collection??
      })
   });
+  console.log('gridPoints',gridPoints[0]);
   return gridPoints
 };
 
@@ -64,7 +64,9 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
     Math.cos(lat1*radConvert) * Math.cos(lat2*radConvert) *
     Math.sin(radLng/2) * Math.sin(radLng/2)
     ;
+  logger.info('in Calc',a,Math.sqrt(a))
   var dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  logger.info('dist',dist)
   var angle = Math.atan2(radLat,radLng);
   return [dist,angle];
 }
