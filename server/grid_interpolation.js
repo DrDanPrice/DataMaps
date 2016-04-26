@@ -16,7 +16,7 @@
 //http://www.irceline.be/~celinair/rio/rio_corine.pdf using landcover with a kriging system
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
-makeBaseGrid = function (bbox, gridstep){
+makeBaseGrid = function (bbox, gridstep){  //bbox is coming in lng/lat
   var sites = Monitors.find(
       {
         loc: {
@@ -29,40 +29,49 @@ makeBaseGrid = function (bbox, gridstep){
         }
       });
       //sites.forEach(function(val,k){logger.info(val)})
-  var topPt = _.min(bbox, function(pt,i){return pt[1]});  //mongo likes long/lat
+  var topPt = _.min(bbox, function(pt,i){return pt[1]});  //mongo likes long/lat; this is smallest lat
   var leftPt = _.min(bbox, function(pt){return pt[0]});
   var bottomPt = _.max(bbox, function(pt){return pt[1]});
   var rightPt = _.max(bbox, function(pt){return pt[0]});
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
   var gridPoints = [];
-  var horizDist = calcDistance(leftPt,rightPt,topPt,topPt);
-  var vertDist = calcDistance(leftPt,leftPt,topPt,bottomPt);
-  var horiz = _.range(parseFloat(0),parseFloat(horizDist),parseFloat(gridstep));
-  var vertical = _.range(parseFloat(0),parseFloat(vertDist),parseFloat(gridstep));
+  var horizDist = calcDistance(leftPt[0],rightPt[0],topPt[1],topPt[1]);
+  var vertDist = calcDistance(leftPt[0],leftPt[0],topPt[1],bottomPt[1]);
+  var horiz = _.range(0,parseFloat(horizDist)*180/Math.PI,parseFloat(gridstep)); //because str
+  var vertical = _.range(0,parseFloat(vertDist)*180/Math.PI,parseFloat(gridstep));
+  console.log(horiz.length)
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
   vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
-     lat = calcLat(parseFloat(topPt),ydist); //or both left twice?
+     lat = parseFloat(topPt[1]) + ydist;
      //http://www.etechpulse.com/2014/02/calculate-latitude-and-longitude-based.html
      horiz.forEach( function(xdist,j){
-
-      gridPt = {loc:{coordinates:[lng,lat]}};
-      console.log('single point',gridPt)
-        sites.forEach(function(site,k){
+       lng = calcLng(lat,leftPt[0],xdist,ydist); //current lat; original lng; dist
+       //console.log('lng should be small increment, after repeated lat',lat,lng)
+       gridPt = {loc:{coordinates:[lng,lat]}};
+       sites.forEach(function(site,k){
           dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat);
           angle = Math.atan2(xdist,ydist)
           gridPt[site._id] = {angle:angle,distance:dist};
         });
-      gridPoints.push(gridPt); //or put it in a collection??
+        gridPoints.push(gridPt); //or put it in a collection??
      })
   });
-  console.log('gridPoints',gridPoints[0]);
+  console.log('gridPoints',gridPoints[4]);
   return gridPoints
 };
 
+var calcLng = function(lat,origlng,xdist,ydist){
+    radLat = lat * radConvert;
+    angle = Math.atan2(xdist,ydist);
+    radLng = origlng * radConvert;
+    newlng = origlng + (Math.atan2(Math.sin(angle)*Math.sin(xdist*radConvert)*Math.cos(radLat),(radLng * radLat) + Math.cos(ydist*radConvert))* (19)); //distance in radians
+    console.log(newlng)
+    return newlng;//  * (180/Math.PI);
+}
+var radConvert = Math.PI/180;  //does that store it for quicker calculation
 //using haversine
 var calcDistance = function(lng1,lng2,lat1,lat2){
-  var radConvert = Math.PI/180;
   var radLat = (lat1-lat2) * radConvert;
   var radLng = (lng1-lng2) * radConvert;
   var a =
@@ -94,7 +103,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
         }
       )
 )*/
-Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,29.0]],.10)});
+Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,29.0]],.11)});
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
 /*var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
