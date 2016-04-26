@@ -16,7 +16,18 @@
 //http://www.irceline.be/~celinair/rio/rio_corine.pdf using landcover with a kriging system
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
-makeBaseGrid = function (bbox, gridstepraw){  //bbox is coming in lng/lat
+makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
+  var grids = GridPoints.find(
+      {
+        loc: {
+        $geoWithin: {
+          $geometry: {
+            type : "Polygon" ,
+            coordinates: [ bbox ]
+            }
+          }
+        }
+      });
   var sites = Monitors.find(
       {
         loc: {
@@ -36,26 +47,32 @@ makeBaseGrid = function (bbox, gridstepraw){  //bbox is coming in lng/lat
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
   var gridPoints = [];
-  var horizDist = calcDistance(leftPt[0],rightPt[0],topPt[1],topPt[1]);
+  //var horizDist = calcDistance(leftPt[0],rightPt[0],topPt[1],topPt[1]);
   var vertDist = calcDistance(leftPt[0],leftPt[0],topPt[1],bottomPt[1]);
+  var vgridstep = parseInt(vertDist*6378.1); //get it on the km grid
   //var gridstep = horizDist/gridstepraw
-  var horiz = _.range(0,horizDist,horizDist/gridstepraw);
-  var vertical = _.range(0,vertDist,vertDist/gridstepraw);
+  //var horiz = _.range(0,horizDist,horizDist/gridstep);
+  var vertical = _.range(0,vertDist,vertDist/vgridstep);
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
   vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
-      console.log(vertDist,topPt[1],ydist)
      lat = topPt[1] + ydist; //both expressed as distance in lat degrees
      //http://www.etechpulse.com/2014/02/calculate-latitude-and-longitude-based.html
+
+     var horizDist = calcDistance(leftPt[0],rightPt[0],lat,lat);
+     var hgridstep = parseInt(horizDist*6378.1);
+     var horiz = _.range(0,horizDist,horizDist/hgridstep);
+
      horiz.forEach( function(xdist,j){
        lng = calcLng(lat,leftPt[0],xdist,ydist); //current lat; original lng; dist
        //console.log('lng should be small increment, after repeated lat',lat,lng)
        gridPt = {loc:{coordinates:[lng,lat]}};
        sites.forEach(function(site,k){
-          dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat) * 6371; //6371 is km in radius of earth
+          dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat) * 6378.1; //6,378.1 is km in radius of earth
           angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
-          gridPt[site._id] = {angle:angle,distance:dist};
+          gridPt[site.AQSID] = {angle:angle,distance:dist};
         });
-        gridPoints.push(gridPt); //or put it in a collection??
+        //gridPoints.push(gridPt); //or put it in a collection??
+        GridPoints.insert(gridPt);
      })
   });
   //console.log('gridPoints',gridPoints);
@@ -81,7 +98,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
     ;
   var dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); //
 //  var angle = Math.atan2(radLat,radLng);
-  return dist;  //multiply by 6371 for km
+  return dist;  //multiply by 6,378.1 for km
 }
 
 /*Sites.aggregate(
@@ -103,7 +120,14 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
         }
       )
 )*/
-Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,30.0],[-93,29.0]],20)});
+Meteor.startup(function(){
+  console.log(GridPoints.find().count())
+  if (GridPoints.find().count() == 0){
+    makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,30.0],[-93,29.0]])
+  }
+  //
+
+});
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
 /*var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
