@@ -16,7 +16,7 @@
 //http://www.irceline.be/~celinair/rio/rio_corine.pdf using landcover with a kriging system
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
-makeBaseGrid = function (bbox, gridstep){  //bbox is coming in lng/lat
+makeBaseGrid = function (bbox, gridstepraw){  //bbox is coming in lng/lat
   var sites = Monitors.find(
       {
         loc: {
@@ -38,26 +38,27 @@ makeBaseGrid = function (bbox, gridstep){  //bbox is coming in lng/lat
   var gridPoints = [];
   var horizDist = calcDistance(leftPt[0],rightPt[0],topPt[1],topPt[1]);
   var vertDist = calcDistance(leftPt[0],leftPt[0],topPt[1],bottomPt[1]);
-  var horiz = _.range(0,parseFloat(horizDist)*180/Math.PI,parseFloat(gridstep)); //because str
-  var vertical = _.range(0,parseFloat(vertDist)*180/Math.PI,parseFloat(gridstep));
-  console.log(horiz.length)
+  //var gridstep = horizDist/gridstepraw
+  var horiz = _.range(0,horizDist,horizDist/gridstepraw);
+  var vertical = _.range(0,vertDist,vertDist/gridstepraw);
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
   vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
-     lat = parseFloat(topPt[1]) + ydist;
+      console.log(vertDist,topPt[1],ydist)
+     lat = topPt[1] + ydist; //both expressed as distance in lat degrees
      //http://www.etechpulse.com/2014/02/calculate-latitude-and-longitude-based.html
      horiz.forEach( function(xdist,j){
        lng = calcLng(lat,leftPt[0],xdist,ydist); //current lat; original lng; dist
        //console.log('lng should be small increment, after repeated lat',lat,lng)
        gridPt = {loc:{coordinates:[lng,lat]}};
        sites.forEach(function(site,k){
-          dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat);
-          angle = Math.atan2(xdist,ydist)
+          dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat) * 6371; //6371 is km in radius of earth
+          angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
           gridPt[site._id] = {angle:angle,distance:dist};
         });
         gridPoints.push(gridPt); //or put it in a collection??
      })
   });
-  console.log('gridPoints',gridPoints[4]);
+  //console.log('gridPoints',gridPoints);
   return gridPoints
 };
 
@@ -65,9 +66,8 @@ var calcLng = function(lat,origlng,xdist,ydist){
     radLat = lat * radConvert;
     angle = Math.atan2(xdist,ydist);
     radLng = origlng * radConvert;
-    newlng = origlng + (Math.atan2(Math.sin(angle)*Math.sin(xdist*radConvert)*Math.cos(radLat),(radLng * radLat) + Math.cos(ydist*radConvert))* (19)); //distance in radians
-    console.log(newlng)
-    return newlng;//  * (180/Math.PI);
+    newlng = radLng + Math.atan2(Math.sin(angle)*Math.sin(xdist*radConvert)*Math.cos(radLat),(radLng * radLat) + Math.cos(ydist*radConvert)); //distance in radians
+    return newlng  * (180/Math.PI);
 }
 var radConvert = Math.PI/180;  //does that store it for quicker calculation
 //using haversine
@@ -79,9 +79,9 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
     Math.cos(lat1*radConvert) * Math.cos(lat2*radConvert) *
     Math.sin(radLng/2) * Math.sin(radLng/2)
     ;
-  var dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); //
 //  var angle = Math.atan2(radLat,radLng);
-  return dist;
+  return dist;  //multiply by 6371 for km
 }
 
 /*Sites.aggregate(
@@ -103,7 +103,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
         }
       )
 )*/
-Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,29.0]],.11)});
+Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,30.0],[-93,29.0]],20)});
 
 //vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
 /*var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
@@ -166,10 +166,10 @@ Meteor.startup(function(){makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,29.0
 */
 
 Meteor.methods({
-    newInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
-        logger.info('Helper called interpolate2grid for pollutant at center with distance: ', pollutant, ' start: ', startEpoch, ' end: ', endEpoch, center, include_distance);
-        interpolate2grid(center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch);
-    }
+    // newInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
+    //     logger.info('Helper called interpolate2grid for pollutant at center with distance: ', pollutant, ' start: ', startEpoch, ' end: ', endEpoch, center, include_distance);
+    //     interpolate2grid(center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch);
+    // }
 });
 
 //could have the livewatcher from livefeed call this one, too
