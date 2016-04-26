@@ -36,16 +36,22 @@ makeBaseGrid = function (bbox, gridstep){
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
   var gridPoints = [];
-  var horiz = _.range(parseFloat(leftPt),parseFloat(rightPt),parseFloat(gridstep));
-  var vertical = _.range(parseFloat(bottomPt),parseFloat(topPt),parseFloat(gridstep));
+  var horizDist = calcDistance(leftPt,rightPt,topPt,topPt);
+  var vertDist = calcDistance(leftPt,leftPt,topPt,bottomPt);
+  var horiz = _.range(parseFloat(0),parseFloat(horizDist),parseFloat(gridstep));
+  var vertical = _.range(parseFloat(0),parseFloat(vertDist),parseFloat(gridstep));
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
-  horiz.forEach( function(lat,i){
-     vertical.forEach( function(lng,j){
+  vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
+     lat = calcLat(parseFloat(topPt),ydist); //or both left twice?
+     //http://www.etechpulse.com/2014/02/calculate-latitude-and-longitude-based.html
+     horiz.forEach( function(xdist,j){
+
       gridPt = {loc:{coordinates:[lng,lat]}};
       console.log('single point',gridPt)
         sites.forEach(function(site,k){
-          distAng = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat);
-          gridPt[site._id] = {angle:distAng[1],distance:distAng[0]};
+          dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat);
+          angle = Math.atan2(xdist,ydist)
+          gridPt[site._id] = {angle:angle,distance:dist};
         });
       gridPoints.push(gridPt); //or put it in a collection??
      })
@@ -64,11 +70,9 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
     Math.cos(lat1*radConvert) * Math.cos(lat2*radConvert) *
     Math.sin(radLng/2) * Math.sin(radLng/2)
     ;
-  logger.info('in Calc',a,Math.sqrt(a))
   var dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  logger.info('dist',dist)
-  var angle = Math.atan2(radLat,radLng);
-  return [dist,angle];
+//  var angle = Math.atan2(radLat,radLng);
+  return dist;
 }
 
 /*Sites.aggregate(
