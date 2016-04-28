@@ -65,7 +65,7 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
      horiz.forEach( function(xdist,j){
        lng = calcLng(lat,leftPt[0],xdist,ydist); //current lat; original lng; dist
        //console.log('lng should be small increment, after repeated lat',lat,lng)
-       gridPt = {loc:{coordinates:[lng,lat]}};
+       gridPt = {loc:{type: "Point", coordinates:[lng,lat]}};
        sites.forEach(function(site,k){
           dist = calcDistance(site.loc.coordinates[0],lng,site.loc.coordinates[1],lat) * 6378.1; //6,378.1 is km in radius of earth
           angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
@@ -124,6 +124,7 @@ Meteor.startup(function(){
   console.log(GridPoints.find().count())
   if (GridPoints.find().count() == 0){
     makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,30.0],[-93,29.0]])
+    Gridpoints.createIndex( { loc : "2dsphere" } );
   }
   //
 

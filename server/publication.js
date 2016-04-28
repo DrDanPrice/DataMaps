@@ -273,6 +273,11 @@ Meteor.publish('monitors', function () {
     });
 });
 
+Meteor.publish('gridpts', function () {
+    return Gridpoints.find({
+    });
+});
+
 Meteor.publish('userData', function () {
     if (this.userId) {
         return Meteor.users.find({
