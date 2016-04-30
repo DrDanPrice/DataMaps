@@ -17,7 +17,7 @@
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
 makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
-  console.log('makeBaseGrid called',Date.now())
+  var begintime = Date.now();
 /*  var grids = GridPoints.find(
       {
         loc: {
@@ -40,63 +40,39 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
           }
         }
       });
-      //sites.forEach(function(val,k){logger.info(val)})
   var topPt = _.min(bbox, function(pt,i){return pt[1]});  //mongo likes long/lat; this is smallest lat
   var leftPt = _.min(bbox, function(pt){return pt[0]});
   var bottomPt = _.max(bbox, function(pt){return pt[1]});
   var rightPt = _.max(bbox, function(pt){return pt[0]});
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
-  var gridPoints = [];
-  //var horizDist = calcDistance(leftPt[0],rightPt[0],topPt[1],topPt[1]);
   var vertDist = calcDistance(leftPt[0],leftPt[0],topPt[1],bottomPt[1]);
   var vgridstep = parseInt(vertDist*6378.1); //get it on the km grid
-  //var gridstep = horizDist/gridstepraw
-  //var horiz = _.range(0,horizDist,horizDist/gridstep);
   var vertical = _.range(0,vertDist,vertDist/vgridstep);
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
   vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
      lat = topPt[1] + ydist*(180/Math.PI); //both expressed as distance in lat degrees
-     //http://www.etechpulse.com/2014/02/calculate-latitude-and-longitude-based.html
      var horizDist = calcDistance(leftPt[0],rightPt[0],lat,lat);
      var hgridstep = parseInt(horizDist*6378.1);
      var horiz = _.range(0,horizDist,horizDist/(hgridstep));
-
      horiz.forEach(function(xdist,j){
-       //console.log(leftPt[0],xdist,lat,xdist*(180/Math.PI),Math.cos(lat*180/Math.PI))
-       //lng = leftPt[0]-(xdist*(180/Math.PI)/Math.cos(lat*180/Math.PI));
        lng = leftPt[0] + (xdist*180/Math.PI);
-       //console.log('lng should be small increment, after repeated lat',lat,lng)
-       gridPt = {loc:{coordinates:[lng,lat]}};
+       gridPt = {loc:[parseFloat(lng),parseFloat(lat)]};
        sites.forEach(function(site,k){
           dist = calcDistance(lng,site.loc.coordinates[0],lat,site.loc.coordinates[1]) * 6378.1; //6,378.1 is km in radius of earth
-         //console.log('calcDistance',lng,site.loc.coordinates[0],lat,site.loc.coordinates[1],dist)
-          // console.log('lng inside sites should repeat 5 times',lat,lng)
+          invDist2 = 1/Math.pow(dist,2);
           angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
-          gridPt[site.AQSID] = {angle:angle,distance:dist};
+          gridPt[site.AQSID] = {angle:angle,distance:dist,invDist2:invDist2};
         });
-//        console.log('dist',dist)
-//        gridPoints.push(gridPt); //or put it in a collection??
         GridPoints.insert(gridPt);
      })
   });
-  console.log('makeBaseGrid ended',Date.now())
-//  console.log(gridPoints)
-  return //gridPoints
+  console.log('makeBaseGrid ended',Date.now()-begintime)//196000 for 30000 pts
+  //GridPoints._createIndex({ loc: '2dsphere' });
+  console.log('makeindex',Date.now()-begintime);
+  return
 };
 
-/*var calcLng = function(lat,origlng,xdist,ydist){
-    //console.log('xdist',xdist);
-    //console.log('ydist',ydist);
-    radLat = lat * radConvert;
-    angle = Math.atan2(xdist,ydist);
-    //console.log('angle',angle)
-    //radLng = origlng * radConvert;
-    //newlng = radLng + Math.atan2(Math.sin(angle)*Math.sin(xdist)*Math.cos(radLat),(radLng * radLat) + Math.cos(ydist)); //distance in radians
-    //console.log('newlng',newlng,newlng  * (180/Math.PI))
-    console.log('diff try',(origlng-(xdist*(180/Math.PI)/Math.cos(lat*180/Math.PI))))
-    return newlng  * (180/Math.PI);
-}*/
 var radConvert = Math.PI/180;  //does that store it for quicker calculation
 //using haversine - http://www.movable-type.co.uk/scripts/latlong.html
 var calcDistance = function(lng1,lng2,lat1,lat2){
@@ -113,7 +89,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 //  var angle = Math.atan2(radLat,radLng);
   return dist;  //multiply by 6,378.1 for km
 }
-
+//take value at each site, multiply by invDist2, sum all the values and divide by number of sites used
 /*Sites.aggregate(
   {
     loc: {
@@ -136,7 +112,8 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 Meteor.startup(function(){
   console.log(GridPoints.find().count())
   if (GridPoints.find().count() == 0){
-    makeBaseGrid([[-93,29.0],[-94,29.0],[-94,30],[-93,30.0],[-93,29.0]])
+    makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]]);
+    //GridPoints.createIndex( { loc : "2dsphere" } ); //do in callback? not working in any case
   }
   //
 
@@ -165,6 +142,7 @@ Meteor.startup(function(){
 			                 ]
             }
         }
+      }
 	];
   GridData.aggregate(interp_pipeline,
     Meteor.bindEnvironment(

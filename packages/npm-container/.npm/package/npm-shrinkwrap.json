@@ -2,18 +2,28 @@
   "dependencies": {
     "csv": {
       "version": "0.4.5",
+      "resolved": "https://registry.npmjs.org/csv/-/csv-0.4.5.tgz",
+      "from": "csv@0.4.5",
       "dependencies": {
         "csv-generate": {
-          "version": "0.0.6"
+          "version": "0.0.6",
+          "resolved": "https://registry.npmjs.org/csv-generate/-/csv-generate-0.0.6.tgz",
+          "from": "csv-generate@0.0.6"
         },
         "csv-parse": {
-          "version": "0.1.4"
-        },
-        "stream-transform": {
-          "version": "0.1.0"
+          "version": "0.1.4",
+          "resolved": "https://registry.npmjs.org/csv-parse/-/csv-parse-0.1.4.tgz",
+          "from": "csv-parse@0.1.4"
         },
         "csv-stringify": {
-          "version": "0.0.8"
+          "version": "0.0.8",
+          "resolved": "https://registry.npmjs.org/csv-stringify/-/csv-stringify-0.0.8.tgz",
+          "from": "csv-stringify@0.0.8"
+        },
+        "stream-transform": {
+          "version": "0.1.0",
+          "resolved": "https://registry.npmjs.org/stream-transform/-/stream-transform-0.1.0.tgz",
+          "from": "stream-transform@0.1.0"
         }
       }
     }
