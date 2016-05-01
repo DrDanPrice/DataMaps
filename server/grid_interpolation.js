@@ -80,6 +80,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 }
 
 var makeGridatTime = function(bbox,beginepoch,endepoch){
+  var begintime = Date.now();
   //might be shorter to walk sites with readings - start with adding values using AirDayWarn?
   //then aggregate, like below
   //for each gridpt - numerator = pollutVal/dist + pollutVal2/dist //or dist*dist, for smoothing
@@ -100,25 +101,36 @@ var monitors = Monitors.find(
     }
   });
   monitors.forEach(function(mon){
-  GridPoints.aggregate([ //do I need a square bracket??
-   {
-     $geoNear: {
-        near: { type: "Point", coordinates: mon.loc },
+  /*  console.log('numb gridpts',GridPoints.find({ loc :
+                         { $near :
+          {
+            $geometry: { type: "Point",  coordinates: mon.loc.coordinates },
+            $minDistance: 1000,
+            $maxDistance: 5000
+          }
+        }}).count()); */
+    GridPoints.aggregate([ //do I need a square bracket??
+     {
+     $geoNear: { //$geoNear has to be first in agg pipeline
+        near: { type: "Point", coordinates: mon.loc.coordinates },
         distanceField: "dist.calculated",
-        maxDistance: 30,
+        maxDistance: 30000,
         //query: { type: "public" },
         includeLocs: "dist.location",
         num: 5,
         spherical: true
-     }
-   }
-],
+        }
+      }
+    ],
   Meteor.bindEnvironment(
       function (err, result) {
+        console.log('inbind'+mon.AQSID)
           _.each(result, function (e) {
+            //need to make test data 
             //should be able to go through each pollutant and set out a numerator and denom
             //not sure I'm thinking about this right; could be a better way to project, etc.
-            logger.info(result)
+            //console.log(e)
+            console.log('each point ended',Date.now()-begintime)
           }),
           function(err){
             console.log('error in aggregation at Monitors: ',err)
@@ -127,13 +139,14 @@ var monitors = Monitors.find(
       )
 );
 });//end of monitors.forEach
+console.log('makeGridatTime ended',Date.now()-begintime)
 }; //end of makeGridatTime
 Meteor.startup(function(){
-  console.log(GridPoints.find().count())
   if (GridPoints.find().count() == 0){
     makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]]);
     //GridPoints.createIndex( { loc : "2dsphere" } ); //do in callback? not working in any case
   }
+  makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
   //
 
 });
