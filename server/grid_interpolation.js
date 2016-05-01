@@ -18,17 +18,6 @@
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
 makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
   var begintime = Date.now();
-/*  var grids = GridPoints.find(
-      {
-        loc: {
-        $geoWithin: {
-          $geometry: {
-            type : "Polygon" ,
-            coordinates: [ bbox ]
-            }
-          }
-        }
-      }); */
   var sites = Monitors.find(
       {
         loc: {
@@ -60,16 +49,16 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
        gridPt = {loc:[parseFloat(lng),parseFloat(lat)]};
        sites.forEach(function(site,k){
           dist = calcDistance(lng,site.loc.coordinates[0],lat,site.loc.coordinates[1]) * 6378.1; //6,378.1 is km in radius of earth
-          invDist2 = 1/Math.pow(dist,2);
+          Dist2 = Math.pow(dist,2);
           angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
-          gridPt[site.AQSID] = {angle:angle,distance:dist,invDist2:invDist2};
+          gridPt[site.AQSID] = {angle:angle,distance:dist,Dist2:Dist2};
         });
         GridPoints.insert(gridPt);
      })
   });
   console.log('makeBaseGrid ended',Date.now()-begintime)//196000 for 30000 pts
-  //GridPoints._createIndex({ loc: '2dsphere' });
-  console.log('makeindex',Date.now()-begintime);
+  GridPoints._ensureIndex({ loc: '2dsphere' });
+  //console.log('makeindex',Date.now()-begintime);
   return
 };
 
@@ -89,26 +78,56 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 //  var angle = Math.atan2(radLat,radLng);
   return dist;  //multiply by 6,378.1 for km
 }
-//take value at each site, multiply by invDist2, sum all the values and divide by number of sites used
-/*Sites.aggregate(
+
+var makeGridatTime = function(bbox,beginepoch,endepoch){
+  //might be shorter to walk sites with readings - start with adding values using AirDayWarn?
+  //then aggregate, like below
+  //for each gridpt - numerator = pollutVal/dist + pollutVal2/dist //or dist*dist, for smoothing
+  //denominator = 1/dist + 1/dist2 etc. //or dist*dist
+  //radial gaussian ??
+  //pull values from 6 before beginepoch
+  //value = 6*v6+5*v5etc.  /6!  //what are we doing with wind angle??
+
+var monitors = Monitors.find(
   {
     loc: {
     $geoWithin: {
       $geometry: {
         type : "Polygon" ,
-        coordinates: [ 0,0,100,100 ]
+        coordinates: [ bbox ]
         }
       }
     }
-  },
+  });
+  monitors.forEach(function(mon){
+  GridPoints.aggregate([ //do I need a square bracket??
+   {
+     $geoNear: {
+        near: { type: "Point", coordinates: mon.loc },
+        distanceField: "dist.calculated",
+        maxDistance: 30,
+        //query: { type: "public" },
+        includeLocs: "dist.location",
+        num: 5,
+        spherical: true
+     }
+   }
+],
   Meteor.bindEnvironment(
       function (err, result) {
           _.each(result, function (e) {
+            //should be able to go through each pollutant and set out a numerator and denom
+            //not sure I'm thinking about this right; could be a better way to project, etc.
             logger.info(result)
-          } )
+          }),
+          function(err){
+            console.log('error in aggregation at Monitors: ',err)
+          }
         }
       )
-)*/
+);
+});//end of monitors.forEach
+}; //end of makeGridatTime
 Meteor.startup(function(){
   console.log(GridPoints.find().count())
   if (GridPoints.find().count() == 0){
