@@ -89,7 +89,7 @@ var makeGridatTime = function(bbox,beginepoch,endepoch){
   //pull values from 6 before beginepoch
   //value = 6*v6+5*v5etc.  /6!  //what are we doing with wind angle??
 
-var monitors = Monitors.find(
+var gridpoints = GridPoints.find(
   {
     loc: {
     $geoWithin: {
@@ -100,7 +100,7 @@ var monitors = Monitors.find(
       }
     }
   });
-  monitors.forEach(function(mon){
+  gridpoints.forEach(function(pt){
   /*  console.log('numb gridpts',GridPoints.find({ loc :
                          { $near :
           {
@@ -109,37 +109,47 @@ var monitors = Monitors.find(
             $maxDistance: 5000
           }
         }}).count()); */
-    GridPoints.aggregate([ //do I need a square bracket??
+    Monitors.aggregate([
      {
      $geoNear: { //$geoNear has to be first in agg pipeline
-        near: { type: "Point", coordinates: mon.loc.coordinates },
-        distanceField: "dist.calculated",
-        maxDistance: 30000,
+        near: { type: "Point", coordinates: pt.loc },
+        distanceField: "dist", //already in meters
+        //distanceMultiplier: 6378.1,
+        maxDistance: 30000, //seems to already be in meters, not radians
         //query: { type: "public" },
-        includeLocs: "dist.location",
-        num: 5,
+        includeLocs: "includedMonitors",
+        //num: 3,
         spherical: true
         }
+      },
+      {
+        $group: { "_id": "$pollutant.type" ,
+                  "count" : { $sum: 1 },
+                  "invsquaresum" : { $sum: 1/('dist'*'dist') },
+                  "valsquareSum" : { $sum : "$pollutant.val"/('dist'*'dist')} //weighted val is valsquareSum/invsquaresum
+                }
+      },
+      {
+        $out: "gridVals" //put date time on coll name, and have new collections for diff. times??
       }
     ],
   Meteor.bindEnvironment(
       function (err, result) {
-        console.log('inbind'+mon.AQSID)
           _.each(result, function (e) {
-            //need to make test data 
+             //console.log(e.dist);//.dist.calculated) //if calculated works, don't need to calc. above
+
+            //need to make test data
             //should be able to go through each pollutant and set out a numerator and denom
-            //not sure I'm thinking about this right; could be a better way to project, etc.
-            //console.log(e)
-            console.log('each point ended',Date.now()-begintime)
+            //console.log('each point ended',Date.now()-begintime)
           }),
           function(err){
-            console.log('error in aggregation at Monitors: ',err)
+            console.log('error in aggregation at GridPoints: ',err)
           }
         }
       )
 );
 });//end of monitors.forEach
-console.log('makeGridatTime ended',Date.now()-begintime)
+console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
 }; //end of makeGridatTime
 Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
