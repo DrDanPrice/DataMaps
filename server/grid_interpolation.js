@@ -196,6 +196,7 @@ var gridpoints = GridPoints.find(
                  IDWObj['IDWnom_'+p['parameter name']] += Number(p.value)/dist2;
                  IDWObj['IDWdenom_'+p['parameter name']] += Number(1.0)/dist2;
                  IDWObj['IDWcount_'+p['parameter name']] += Number(1.0);
+                 console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
                });
             };
           //
@@ -217,8 +218,9 @@ var gridpoints = GridPoints.find(
   for (key in IDWObj){
     for (antype in AirNowHourlyParamNames){
       var type = AirNowHourlyParamNames[antype];
+    //  console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
       if (IDWObj['IDWcount_'+type]>0){
-        console.log('cnt',IDWObj['IDWcount_'+type])
+        //console.log('cnt',IDWObj['IDWcount_'+type])
         IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
       }
     }
