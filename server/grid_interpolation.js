@@ -78,17 +78,57 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 //  var angle = Math.atan2(radLat,radLng);
   return dist;  //multiply by 6,378.1 for km
 }
+//make these shorter if we want fewer
+var AirNowHourlyParamNames = [
+  'NO','NO2T','NO2','NO2Y','NOX','NOY','NO3','SO4','SO2','SO2-24HR','SO2T','CO','CO-8HR','COT','EC','OC','BC','UV-AETH','PM2.5','PM10','OZONE','OZONE-8HR','OZONE-1HR','PM2.5-24HR','PM10-24HR','TEMP','WS','WD','RHUM','BARPR','SRAD','PRECIP'
+];
+//will use in UI later
+var AirNowHourlyUnits = [
+  'ppb''ppb','ppb','ppb','ppb','ppb','μg/m3','μg/m3','ppb','ppb','ppb','ppm','ppm','ppb','μg/m3','μg/m3','μg/m3','μg/m3','μg/m3','μg/m3','ppb','ppb','ppb','μg/m3','μg/m3','oC','m/s','degrees','%','mb','Watts/m2','mm'
+]
+var AirNowHourlyDescripts = [
+  'NO (nitric oxide)',
+  'NO2 (nitrogen dioxide), true measure',
+  'NO2 computed, NOx-NO',
+  'NO2 computed, NOy-NO',
+  'NOx (nitrogen oxides)',
+  'NOy (total reactive nitrogen)',
+  'NO3 ion (nitrate, not adjusted for ammonium ion)',
+  'SO4 ion (sulfate, not adjusted for ammonium ion)',
+  'SO2 (sulfur dioxide), conventional',
+  'SO2 24-hr average (midnight to midnight)',
+  'SO2 trace levels',
+  'CO (carbon monoxide), conventional',
+  'Peak CO 8-hr average (midnight to midnight)',
+  'CO trace levels',
+  'EC (elemental carbon) – PM2.5',
+  'OC (organic carbon, not adjusted for oxygen and hydrogen) – PM2.5',
+  'BC (black carbon at 880 nm)',
+  'UV-AETH (second channel of Aethalometer at 370 nm)',
+  'PM2.5 mass',
+  'PM10 mass',
+  'Ozone',
+  'Peak ozone 8-hr average (midnight to midnight)',
+  'Peak ozone 1-hr maximum (midnight to midnight)',
+  'PM2.5 mass 24-hr average (midnight to midnight)',
+  'PM10 mass 24-hr average (midnight to midnight)',
+  'Ambient temperature',
+  'Wind speed',
+  'Wind direction',
+  'Relative humidity',
+  'Barometric pressure',
+  'Solar radiation',
+  'Precipitation'
+];
 
 var makeGridatTime = function(bbox,beginepoch,endepoch){
   var begintime = Date.now();
-  GridValues.remove({});
-  //might be shorter to walk sites with readings - start with adding values using AirDayWarn?
-  //then aggregate, like below
+  GrIDValues.remove({});
   //for each gridpt - numerator = pollutVal/dist + pollutVal2/dist //or dist*dist, for smoothing
   //denominator = 1/dist + 1/dist2 etc. //or dist*dist
   //radial gaussian ??
   //pull values from 6 before beginepoch
-  //value = 6*v6+5*v5etc.  /6!  //what are we doing with wind angle??
+  //value = 6*v1+5*v2etc.  /6!  //what are we doing with wind angle??
 
 var gridpoints = GridPoints.find(
   {
@@ -102,6 +142,16 @@ var gridpoints = GridPoints.find(
     }
   });
   gridpoints.forEach(function(pt){
+    //calculate all inverse distance weighted values
+    //AirNow.gov hourly :https://docs.airnowapi.org/docs/HourlyDataFactSheet.pdf
+    var IDWeights = {};
+    IDWeights['loc'] = pt.loc;
+    var IDWObj = {};
+    for (var i=0;i<AirNowHourlyParamNames.length;i++){
+      IDWObj['IDWnom_'+AirNowHourlyParamNames[i]] =[];
+      IDWObj['IDWdenom_'+AirNowHourlyParamNames[i]] =[];
+      IDWObj['IDWcount_'+AirNowHourlyParamNames[i]] =[];
+    }
     Monitors.aggregate([
      {
      $geoNear: { //$geoNear has to be first in agg pipeline
@@ -120,7 +170,8 @@ var gridpoints = GridPoints.find(
           _id: 1,
           AQSID: 1,
           hourlyParameters: 1,
-          idwDist: { $divide: [ 1, { $multiply: [ "$dist", "$dist" ] } ] }
+          dist: "$dist"//,
+          //idwDist: { $divide: [ 1, { $multiply: [ "$dist", "$dist" ] } ] }
           //idwVals: { $divide: [ '$thepollutval',{ $ multiply: [ "$dist", "$dist" ]}]}
         }
       // },
@@ -139,15 +190,14 @@ var gridpoints = GridPoints.find(
             //console.log('result',result)
           //}
            _.each(result, function (e) {
+             var dist2 = e.dist*e.dist;
              if (e.hourlyParameters){
                _.each(e.hourlyParameters,function(p){
-                 //have to do idwVals for each inside the hourlyParameters;
-                 //
-                 //console.log('thisis p: ',p.AQSID)
-               })
-               //can we .update the value without finding the record again?
-               //e.update({'idws':'whatever'})
-            }
+                 IDWObj['IDWnom_'+p['parameter name']] += Number(p.value)/dist2;
+                 IDWObj['IDWdenom_'+p['parameter name']] += 1/dist2;
+                 IDWObj['IDWcount_'+p['parameter name']] += 1;
+               });
+            };
           //
           //   //need to make test data
           //   //should be able to go through each pollutant and set out a numerator and denom
@@ -159,14 +209,20 @@ var gridpoints = GridPoints.find(
         }
       )
 );
-//update or insert into new gridVals collection - then run another pipeline on
+//update or insert into new grIDVals collection - then run another pipeline on
 //either a publish or just to create the idws for each - have to total and divide
 //by number of valid - count won't work for all pollutants
 //and wind direction...
-  var ptObj = {'make':'thinkabout'} //either do the sets and division here or run a pipeline?
-  GridValues.insert(ptObj)
+  for (key in IDWObj){
+    for (type in AirNowHourlyParamNames){
+      if (IDWObj['IDWcount_'+type]>0){
+        IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
+      }
+    }
+  }
+  GrIDValues.insert(IDWeights)
 });//end of monitors.forEach
-GridValues._ensureIndex({ loc: '2dsphere' });
+GrIDValues._Index({ loc: '2dsphere' });
 console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
 }; //end of makeGridatTime
 Meteor.startup(function(){
@@ -179,72 +235,8 @@ Meteor.startup(function(){
 
 });
 
-//vgl: https://github.com/DataAnalyticsinStudentHands/OldOzoneMap/tree/master/Data%20Interpolation/Java_src
-/*var interpolate2grid = function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
-    var interp_pipeline = [
-        {
-            $match: {
-                $and: [{
-                    site: {
-                    	$geoNear: {
-                    		near: center,
-                        maxDistance: include_distance,
-							          distanceField: "distance",
-                        //distanceMultiplier: 3963.2, //6,378.1 for km; but maybe use radians???
-							          spherical: true
-                    	}
-                    },
-					               epoch: {
-						                     $gt: parseInt(startEpoch, 10),
-						                     $lt: parseInt(endEpoch, 10)
-					                },
-				                pollutant: pollutant
-			                 ]
-            }
-        }
-      }
-	];
-  GridData.aggregate(interp_pipeline,
-    Meteor.bindEnvironment(
-        function (err, result) {
-            _.each(result, function (e) {} )
-          }
-        )
-  );
-
-    LiveData.aggregate(interp_pipeline,
-        Meteor.bindEnvironment(
-            function (err, result) {
-                _.each(result, function (e) {
-                    let grids = {};
-                    let sites = {};
-                    //let sites['pollutants'] = {};
-                    subObj._id = e.site + '_' + e._id;
-                    subObj.site = e.site;
-                    subObj.epoch = e._id;
-                    var subTypes = e.subTypes;
-                    var aggrSubTypes = {}; //hold aggregated data
-
-                    for (var i = 0; i < subTypes.length; i++) {
-
-                    //transform aggregated data to generic data format using subtypes etc.
-                    var newaggr = {};
-					}
-				})
-            }),
-            function (error) {
-                Meteor._debug('error during aggregation: ' + error);
-            }
-        )
-    );
-};
-*/
 
 Meteor.methods({
-    // newInterpolation: function (center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch) {
-    //     logger.info('Helper called interpolate2grid for pollutant at center with distance: ', pollutant, ' start: ', startEpoch, ' end: ', endEpoch, center, include_distance);
-    //     interpolate2grid(center, include_distance, gridstep, pollutant, taillength, startEpoch, endEpoch);
-    // }
 });
 
 //could have the livewatcher from livefeed call this one, too
