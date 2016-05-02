@@ -21,7 +21,7 @@ function sendEmail(reportType, reportString) {
         }
     });
 }
-
+/* //turning off for testing
 Meteor.setInterval(function () {
 
     var watchedPath = '/hnet/incoming/2016/';
@@ -48,7 +48,7 @@ Meteor.setInterval(function () {
             });
         });
     });
-    
+
         if (emergencyReportString !== '') {
             logger.info(emergencyReportString);
             sendEmail('Emergency Report', emergencyReportString);
@@ -59,5 +59,6 @@ Meteor.setInterval(function () {
             //sendEmail('Site\'s periodic report', periodicReportString);
             lastPeriodicReportTime = moment();
         }
-    
-}, 5 * 60 * 1000); // run every 5 min, to report a site is down immidiately
+
+}, 5 * 60 * 1000); // run every 5 min, to report a site is down immediately
+*/

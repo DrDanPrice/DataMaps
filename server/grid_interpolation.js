@@ -58,7 +58,6 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
   });
   console.log('makeBaseGrid ended',Date.now()-begintime)//196000 for 30000 pts
   GridPoints._ensureIndex({ loc: '2dsphere' });
-  //console.log('makeindex',Date.now()-begintime);
   return
 };
 
@@ -84,7 +83,7 @@ var AirNowHourlyParamNames = [
 ];
 //will use in UI later
 var AirNowHourlyUnits = [
-  'ppb''ppb','ppb','ppb','ppb','ppb','μg/m3','μg/m3','ppb','ppb','ppb','ppm','ppm','ppb','μg/m3','μg/m3','μg/m3','μg/m3','μg/m3','μg/m3','ppb','ppb','ppb','μg/m3','μg/m3','oC','m/s','degrees','%','mb','Watts/m2','mm'
+  'ppb','ppb','ppb','ppb','ppb','ppb','μg/m3','μg/m3','ppb','ppb','ppb','ppm','ppm','ppb','μg/m3','μg/m3','μg/m3','μg/m3','μg/m3','μg/m3','ppb','ppb','ppb','μg/m3','μg/m3','oC','m/s','degrees','%','mb','Watts/m2','mm'
 ]
 var AirNowHourlyDescripts = [
   'NO (nitric oxide)',
@@ -123,7 +122,7 @@ var AirNowHourlyDescripts = [
 
 var makeGridatTime = function(bbox,beginepoch,endepoch){
   var begintime = Date.now();
-  GrIDValues.remove({});
+  GridValues.remove({});
   //for each gridpt - numerator = pollutVal/dist + pollutVal2/dist //or dist*dist, for smoothing
   //denominator = 1/dist + 1/dist2 etc. //or dist*dist
   //radial gaussian ??
@@ -147,6 +146,7 @@ var gridpoints = GridPoints.find(
     var IDWeights = {};
     IDWeights['loc'] = pt.loc;
     var IDWObj = {};
+    //make a function call, so not just AirNow data
     for (var i=0;i<AirNowHourlyParamNames.length;i++){
       IDWObj['IDWnom_'+AirNowHourlyParamNames[i]] =[];
       IDWObj['IDWdenom_'+AirNowHourlyParamNames[i]] =[];
@@ -161,7 +161,7 @@ var gridpoints = GridPoints.find(
         maxDistance: 30000, //seems to already be in meters, not radians
         //query: { type: "public" },
         //includeLocs: "includedMonitors",
-        //num: 3,
+        num: 3,
         spherical: true
         }
       },
@@ -193,9 +193,12 @@ var gridpoints = GridPoints.find(
              var dist2 = e.dist*e.dist;
              if (e.hourlyParameters){
                _.each(e.hourlyParameters,function(p){
+                 console.log('in hourly',p['parameter name'])
+                 console.log(IDWObj['IDWcount_'+p['parameter name']])
                  IDWObj['IDWnom_'+p['parameter name']] += Number(p.value)/dist2;
-                 IDWObj['IDWdenom_'+p['parameter name']] += 1/dist2;
-                 IDWObj['IDWcount_'+p['parameter name']] += 1;
+                 IDWObj['IDWdenom_'+p['parameter name']] += Number(1.0)/dist2;
+                 IDWObj['IDWcount_'+p['parameter name']] += Number(1.0);
+                 console.log(IDWObj['IDWcount_'+p['parameter name']])
                });
             };
           //
@@ -213,25 +216,27 @@ var gridpoints = GridPoints.find(
 //either a publish or just to create the idws for each - have to total and divide
 //by number of valid - count won't work for all pollutants
 //and wind direction...
+//console.log('IDWObj',IDWObj)
   for (key in IDWObj){
-    for (type in AirNowHourlyParamNames){
+    for (antype in AirNowHourlyParamNames){
+      var type = AirNowHourlyParamNames[antype];
       if (IDWObj['IDWcount_'+type]>0){
+        console.log('cnt',IDWObj['IDWcount_'+type])
         IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
       }
     }
   }
-  GrIDValues.insert(IDWeights)
+  GridValues.insert(IDWeights)
 });//end of monitors.forEach
-GrIDValues._Index({ loc: '2dsphere' });
+GridValues._ensureIndex({ loc: '2dsphere' });
 console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
 }; //end of makeGridatTime
 Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
     makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]]);
-    //GridPoints.createIndex( { loc : "2dsphere" } ); //do in callback? not working in any case
   }
   makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
-  //
+
 
 });
 
