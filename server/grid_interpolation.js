@@ -196,7 +196,7 @@ var gridpoints = GridPoints.find(
                  IDWObj['IDWnom_'+p['parameter name']] += Number(p.value)/dist2;
                  IDWObj['IDWdenom_'+p['parameter name']] += Number(1.0)/dist2;
                  IDWObj['IDWcount_'+p['parameter name']] += Number(1.0);
-                 console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
+                 //console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
                });
             };
           //
@@ -204,6 +204,16 @@ var gridpoints = GridPoints.find(
           //   //should be able to go through each pollutant and set out a numerator and denom
              //console.log('each point ended',Date.now()-begintime)
            });
+           for (key in IDWObj){
+             for (antype in AirNowHourlyParamNames){
+               var type = AirNowHourlyParamNames[antype];
+             //  console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
+               if (IDWObj['IDWcount_'+type]>0){
+                 //console.log('cnt',IDWObj['IDWcount_'+type])
+                 IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
+               }
+             }
+           };
           if(err){
             console.log('error in aggregation at GridPoints: ',err)
           }
@@ -215,16 +225,7 @@ var gridpoints = GridPoints.find(
 //by number of valid - count won't work for all pollutants
 //and wind direction...
 //console.log('IDWObj',IDWObj)
-  for (key in IDWObj){
-    for (antype in AirNowHourlyParamNames){
-      var type = AirNowHourlyParamNames[antype];
-    //  console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
-      if (IDWObj['IDWcount_'+type]>0){
-        //console.log('cnt',IDWObj['IDWcount_'+type])
-        IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
-      }
-    }
-  }
+
   GridValues.insert(IDWeights)
 });//end of monitors.forEach
 GridValues._ensureIndex({ loc: '2dsphere' });
