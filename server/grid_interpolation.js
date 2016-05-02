@@ -148,9 +148,9 @@ var gridpoints = GridPoints.find(
     var IDWObj = {};
     //make a function call, so not just AirNow data
     for (var i=0;i<AirNowHourlyParamNames.length;i++){
-      IDWObj['IDWnom_'+AirNowHourlyParamNames[i]] =[];
-      IDWObj['IDWdenom_'+AirNowHourlyParamNames[i]] =[];
-      IDWObj['IDWcount_'+AirNowHourlyParamNames[i]] =[];
+      IDWObj['IDWnom_'+AirNowHourlyParamNames[i]] = 0;
+      IDWObj['IDWdenom_'+AirNowHourlyParamNames[i]] = 0;
+      IDWObj['IDWcount_'+AirNowHourlyParamNames[i]] = 0;
     }
     Monitors.aggregate([
      {
@@ -193,12 +193,9 @@ var gridpoints = GridPoints.find(
              var dist2 = e.dist*e.dist;
              if (e.hourlyParameters){
                _.each(e.hourlyParameters,function(p){
-                 console.log('in hourly',p['parameter name'])
-                 console.log(IDWObj['IDWcount_'+p['parameter name']])
                  IDWObj['IDWnom_'+p['parameter name']] += Number(p.value)/dist2;
                  IDWObj['IDWdenom_'+p['parameter name']] += Number(1.0)/dist2;
                  IDWObj['IDWcount_'+p['parameter name']] += Number(1.0);
-                 console.log(IDWObj['IDWcount_'+p['parameter name']])
                });
             };
           //
