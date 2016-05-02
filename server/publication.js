@@ -278,6 +278,11 @@ Meteor.publish('gridpts', function () {
     });
 });
 
+Meteor.publish('gridvals', function () {
+    return GridValues.find({
+    });
+});
+
 Meteor.publish('userData', function () {
     if (this.userId) {
         return Meteor.users.find({

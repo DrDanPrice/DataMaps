@@ -81,6 +81,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 
 var makeGridatTime = function(bbox,beginepoch,endepoch){
   var begintime = Date.now();
+  GridValues.remove({});
   //might be shorter to walk sites with readings - start with adding values using AirDayWarn?
   //then aggregate, like below
   //for each gridpt - numerator = pollutVal/dist + pollutVal2/dist //or dist*dist, for smoothing
@@ -101,14 +102,6 @@ var gridpoints = GridPoints.find(
     }
   });
   gridpoints.forEach(function(pt){
-  /*  console.log('numb gridpts',GridPoints.find({ loc :
-                         { $near :
-          {
-            $geometry: { type: "Point",  coordinates: mon.loc.coordinates },
-            $minDistance: 1000,
-            $maxDistance: 5000
-          }
-        }}).count()); */
     Monitors.aggregate([
      {
      $geoNear: { //$geoNear has to be first in agg pipeline
@@ -117,38 +110,63 @@ var gridpoints = GridPoints.find(
         //distanceMultiplier: 6378.1,
         maxDistance: 30000, //seems to already be in meters, not radians
         //query: { type: "public" },
-        includeLocs: "includedMonitors",
+        //includeLocs: "includedMonitors",
         //num: 3,
         spherical: true
         }
       },
       {
-        $group: { "_id": "$pollutant.type" ,
-                  "count" : { $sum: 1 },
-                  "invsquaresum" : { $sum: 1/('dist'*'dist') },
-                  "valsquareSum" : { $sum : "$pollutant.val"/('dist'*'dist')} //weighted val is valsquareSum/invsquaresum
-                }
-      },
-      {
-        $out: "gridVals" //put date time on coll name, and have new collections for diff. times??
+        $project: {
+          _id: 1,
+          AQSID: 1,
+          hourlyParameters: 1,
+          idwDist: { $divide: [ 1, { $multiply: [ "$dist", "$dist" ] } ] }
+          //idwVals: { $divide: [ '$thepollutval',{ $ multiply: [ "$dist", "$dist" ]}]}
+        }
+      // },
+      // {
+      //   $group: {
+      //     "_id": "$AQSID",
+      //     "count" : { $sum: 1 },
+      //     "distances4idw" : { $addToSet:  "$idwDist"
+      //   }
+      //}
       }
     ],
   Meteor.bindEnvironment(
       function (err, result) {
-          _.each(result, function (e) {
-             //console.log(e.dist);//.dist.calculated) //if calculated works, don't need to calc. above
-
-            //need to make test data
-            //should be able to go through each pollutant and set out a numerator and denom
-            //console.log('each point ended',Date.now()-begintime)
-          }),
-          function(err){
+        //if(result){
+            //console.log('result',result)
+          //}
+           _.each(result, function (e) {
+             if (e.hourlyParameters){
+               _.each(e.hourlyParameters,function(p){
+                 //have to do idwVals for each inside the hourlyParameters;
+                 //
+                 //console.log('thisis p: ',p.AQSID)
+               })
+               //can we .update the value without finding the record again?
+               //e.update({'idws':'whatever'})
+            }
+          //
+          //   //need to make test data
+          //   //should be able to go through each pollutant and set out a numerator and denom
+             //console.log('each point ended',Date.now()-begintime)
+           });
+          if(err){
             console.log('error in aggregation at GridPoints: ',err)
           }
         }
       )
 );
+//update or insert into new gridVals collection - then run another pipeline on
+//either a publish or just to create the idws for each - have to total and divide
+//by number of valid - count won't work for all pollutants
+//and wind direction...
+  var ptObj = {'make':'thinkabout'} //either do the sets and division here or run a pipeline?
+  GridValues.insert(ptObj)
 });//end of monitors.forEach
+GridValues._ensureIndex({ loc: '2dsphere' });
 console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
 }; //end of makeGridatTime
 Meteor.startup(function(){
