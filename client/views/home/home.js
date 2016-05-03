@@ -28,11 +28,12 @@ Template.home.onRendered(function () {
           var AQIcolor = '#b3cce6';
           if (O3val>0) {AQIcolor='#3FAE4A'};
           if (O3val>40) {AQIcolor='#F6EC26'};
+          if (O3val>48) {AQIcolor='#ffcce6'};
           if (O3val>56) {AQIcolor='#ff0000'};
-          var circle = L.circle([pt.loc[1], pt.loc[0]], 500, {
+          var circle = L.circle([pt.loc[1], pt.loc[0]], 150, {
             color: AQIcolor,
             fillColor: AQIcolor,
-            fillOpacity: 0.5
+            fillOpacity: 0.2
           }).addTo(AQmap);
           //    console.log(pt)
                 // var marker = L.marker([pt.loc[1], pt.loc[0]], {
