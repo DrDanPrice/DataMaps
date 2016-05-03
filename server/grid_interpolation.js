@@ -79,7 +79,7 @@ var calcDistance = function(lng1,lng2,lat1,lat2){
 }
 //make these shorter if we want fewer
 var AirNowHourlyParamNames = [
-  'NO','NO2T','NO2','NO2Y','NOX','NOY','NO3','SO4','SO2','SO2-24HR','SO2T','CO','CO-8HR','COT','EC','OC','BC','UV-AETH','PM2.5','PM10','OZONE','OZONE-8HR','OZONE-1HR','PM2.5-24HR','PM10-24HR','TEMP','WS','WD','RHUM','BARPR','SRAD','PRECIP'
+  'NO','NO2T','NO2','NO2Y','NOX','NOY','NO3','SO4','SO2','SO2-24HR','SO2T','CO','CO-8HR','COT','EC','OC','BC','UV-AETH','PM25','PM10','OZONE','OZONE-8HR','OZONE-1HR','PM25-24HR','PM10-24HR','TEMP','WS','WD','RHUM','BARPR','SRAD','PRECIP'
 ];
 //will use in UI later
 var AirNowHourlyUnits = [
@@ -193,9 +193,12 @@ var gridpoints = GridPoints.find(
              var dist2 = e.dist*e.dist;
              if (e.hourlyParameters){
                _.each(e.hourlyParameters,function(p){
-                 IDWObj['IDWnom_'+p['parameter name']] += Number(p.value)/dist2;
-                 IDWObj['IDWdenom_'+p['parameter name']] += Number(1.0)/dist2;
-                 IDWObj['IDWcount_'+p['parameter name']] += Number(1.0);
+                 var paramname = p['parameter name']
+                 if (paramname == 'PM2.5'){paramname = 'PM25'};
+                 if (paramname == 'PM2.5-24HR'){paramname = 'PM25-24HR'};
+                 IDWObj['IDWnom_'+paramname] += Number(p.value)/dist2;
+                 IDWObj['IDWdenom_'+paramname] += Number(1.0)/dist2;
+                 IDWObj['IDWcount_'+paramname] += Number(1.0);
                  //console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
                });
             };
@@ -205,18 +208,21 @@ var gridpoints = GridPoints.find(
              //console.log('each point ended',Date.now()-begintime)
            });
            for (key in IDWObj){
-             for (antype in AirNowHourlyParamNames){
-               var type = AirNowHourlyParamNames[antype];
-             //  console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
+             for (ind in AirNowHourlyParamNames){
+               var type = AirNowHourlyParamNames[ind];
+               //console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
                if (IDWObj['IDWcount_'+type]>0){
                  //console.log('cnt',IDWObj['IDWcount_'+type])
                  IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
                }
              }
-           };
+           }
           if(err){
             console.log('error in aggregation at GridPoints: ',err)
-          }
+          };
+          GridValues.insert(IDWeights) //should be the value aggregated...
+        //  console.log(IDWeights)
+        //  console.log(GridValues.find().count())
         }
       )
 );
@@ -224,10 +230,9 @@ var gridpoints = GridPoints.find(
 //either a publish or just to create the idws for each - have to total and divide
 //by number of valid - count won't work for all pollutants
 //and wind direction...
-//console.log('IDWObj',IDWObj)
 
-  GridValues.insert(IDWeights)
-});//end of monitors.forEach
+  //GridValues.insert(IDWeights) //should be the value aggregated...
+});//end of gridpoints.forEach
 GridValues._ensureIndex({ loc: '2dsphere' });
 console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
 }; //end of makeGridatTime
