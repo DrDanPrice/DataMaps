@@ -161,7 +161,7 @@ var gridpoints = GridPoints.find(
         maxDistance: 30000, //seems to already be in meters, not radians
         //query: { type: "public" },
         //includeLocs: "includedMonitors",
-        num: 3,
+        //num: 3,
         spherical: true
         }
       },
