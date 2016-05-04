@@ -16,6 +16,8 @@
 //http://www.irceline.be/~celinair/rio/rio_corine.pdf using landcover with a kriging system
 //https://www3.epa.gov/airtrends/specialstudies/dsisurfaces.pdf --2004, mostly kriging, no idw
 //http://sites.gsu.edu/jdiem/files/2014/07/EP2002-2fmwe5w.pdf -- argues for linear regression from known sources, and not interpolation
+
+
 makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
   var begintime = Date.now();
   var sites = Monitors.find(
@@ -244,9 +246,9 @@ console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing noth
 }; //end of makeGridatTime
 Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
-    //makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]]);
+    makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]]);
   }
-  //makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
+  makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
 
 
 });
