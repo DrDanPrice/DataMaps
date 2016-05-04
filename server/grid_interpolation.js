@@ -48,6 +48,11 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
        lng = leftPt[0] + (xdist*180/Math.PI);
        gridPt = {loc:[parseFloat(lng),parseFloat(lat)]};
        sites.forEach(function(site,k){
+         var gridsize = 1;
+         if ((i%10)==0 && (j%10)==0){gridsize = 10};
+         //could just have gridsizei and gridsizek - then search for both == 10, etc. (or %, but have to see if that is slower)
+         //instead of calculating distance and angle, could have i and k of closest gript to
+         //each monitor and then have angle and distance calculated from that...
           dist = calcDistance(lng,site.loc.coordinates[0],lat,site.loc.coordinates[1]) * 6378.1; //6,378.1 is km in radius of earth
           Dist2 = Math.pow(dist,2);
           angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
@@ -145,6 +150,7 @@ var gridpoints = GridPoints.find(
     //AirNow.gov hourly :https://docs.airnowapi.org/docs/HourlyDataFactSheet.pdf
     var IDWeights = {};
     IDWeights['loc'] = pt.loc;
+    IDWeights['gridsize'] = pt.gridsize;
     var IDWObj = {};
     //make a function call, so not just AirNow data
     for (var i=0;i<AirNowHourlyParamNames.length;i++){
@@ -238,9 +244,9 @@ console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing noth
 }; //end of makeGridatTime
 Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
-    makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]]);
+    //makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]]);
   }
-  makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,31],[-94.5,31.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
+  //makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
 
 
 });
