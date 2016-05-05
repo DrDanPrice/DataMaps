@@ -1,4 +1,14 @@
 <template name="home">
+  <div class="ui message">
+      <div class="header">
+          pollutant: {{pollutant}}
+      </div>
+      <div class="inline field">
+          <label>Select Date: </label>
+          <input type="date" value="{{selectedDate}}" id="datepicker">
+      </div>
+  </div>
     <div id="displayMap" class="ui-container">
     </div>
+
 </template>
