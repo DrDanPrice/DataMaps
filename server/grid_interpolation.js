@@ -41,17 +41,23 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
   var vgridstep = parseInt(vertDist*6378.1); //get it on the km grid
   var vertical = _.range(0,vertDist,vertDist/vgridstep);
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
+  var i10 = 0;
   vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
+     if (i10>10){i10=0};
+     i10++;
      lat = topPt[1] + ydist*(180/Math.PI); //both expressed as distance in lat degrees
      var horizDist = calcDistance(leftPt[0],rightPt[0],lat,lat);
      var hgridstep = parseInt(horizDist*6378.1);
      var horiz = _.range(0,horizDist,horizDist/(hgridstep));
+     var j10 = 0;
      horiz.forEach(function(xdist,j){
+       if (j10>10){j10=0};
+       j10++;
        lng = leftPt[0] + (xdist*180/Math.PI);
-       gridPt = {loc:[parseFloat(lng),parseFloat(lat)]};
+       gridPt = {loc:[parseFloat(lng),parseFloat(lat)],gridsizex:j10,gridsizey:i10};
        sites.forEach(function(site,k){
-         var gridsize = 1;
-         if ((i%10)==0 && (j%10)==0){gridsize = 10};
+         //var gridsize = 1;
+         //if ((i%10)==0 && (j%10)==0){gridsize = 10};
          //could just have gridsizei and gridsizek - then search for both == 10, etc. (or %, but have to see if that is slower)
          //instead of calculating distance and angle, could have i and k of closest gript to
          //each monitor and then have angle and distance calculated from that...
@@ -152,7 +158,8 @@ var gridpoints = GridPoints.find(
     //AirNow.gov hourly :https://docs.airnowapi.org/docs/HourlyDataFactSheet.pdf
     var IDWeights = {};
     IDWeights['loc'] = pt.loc;
-    IDWeights['gridsize'] = pt.gridsize;
+    IDWeights['gridsizex'] = pt.gridsizex;
+    IDWeights['gridsizey'] = pt.gridsizey;
     var IDWObj = {};
     //make a function call, so not just AirNow data
     for (var i=0;i<AirNowHourlyParamNames.length;i++){

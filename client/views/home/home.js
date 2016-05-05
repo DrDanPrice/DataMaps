@@ -20,9 +20,8 @@ Template.home.onRendered(function () {
             } //end of added
 
     });
-
     Meteor.subscribe('gridvals');
-    GridValues.find().observeChanges({
+    GridValues.find({$and: [ { gridsizex : 10 }, { gridsizey : 10 }]}).observeChanges({
         added: function (id, pt) {
           var O3val = pt.OZONE;
           var AQIcolor = '#b3cce6';
@@ -30,7 +29,7 @@ Template.home.onRendered(function () {
           if (O3val>40) {AQIcolor='#F6EC26'};
           if (O3val>48) {AQIcolor='#ffcce6'};
           if (O3val>56) {AQIcolor='#ff0000'};
-          var circle = L.circle([pt.loc[1], pt.loc[0]], 150, {
+          var circle = L.circle([pt.loc[1], pt.loc[0]], 4550, {
             color: AQIcolor,
             fillColor: AQIcolor,
             fillOpacity: 0.2
