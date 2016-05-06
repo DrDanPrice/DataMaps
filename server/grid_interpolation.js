@@ -38,37 +38,43 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
   var vertDist = calcDistance(leftPt[0],leftPt[0],topPt[1],bottomPt[1]);
-  var vgridstep = parseInt(vertDist*6378.1); //get it on the km grid
-  var vertical = _.range(0,vertDist,vertDist/vgridstep);
+  var latstep = calcDistance(leftPt[0],leftPt[0],28.0,27.0);
+  //var vertlatstep = parseInt(latstep*6378.1);// *(180/Math.PI); 111km
+
+  //var vgridstep = parseInt(vertDist*6378.1); //get it on the km grid
+  //var vertical = _.range(0,vertDist,vertDist/vertlatstep); //vertDist/vgridstep);
+
   //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
   var i10 = 0;
-  vertical.forEach( function(ydist,i){ //distance expressed in latitude line difference
+  for (var i = 1; i<vertDist*6378.1; i++){
      if (i10>10){i10=0};
      i10++;
-     lat = topPt[1] + ydist*(180/Math.PI); //both expressed as distance in lat degrees
+     var ydist = 1/6378.1;// vertDist/(vertDist*6378.1);
+     lat = topPt[1] + i*ydist*(180/Math.PI);
      var horizDist = calcDistance(leftPt[0],rightPt[0],lat,lat);
-     var hgridstep = parseInt(horizDist*6378.1);
-     var horiz = _.range(0,horizDist,horizDist/(hgridstep));
+     var lngstep = calcDistance(leftPt[0],leftPt[0]+1,lat,lat);
+     //var horizstep = parseInt(lngstep*6378.1);
+     var xdist = ydist; //((horizDist*latstep)/vertDist)/// lngstep/horizstep; //should give radians for 1km
+     console.log(ydist)
+     console.log('xdist',xdist)
+     //var hgridstep = parseInt(horizDist*6378.1);
+     //var horiz = _.range(0,horizDist,horizDist/horizstep); //horizDist/(hgridstep));
      var j10 = 0;
-     horiz.forEach(function(xdist,j){
+     for (var j = 1; j<horizDist*6378.1;j++){
        if (j10>10){j10=0};
        j10++;
-       lng = leftPt[0] + (xdist*180/Math.PI);
+       //var xdist = horizDist/(horizDist*6378.1);
+       lng = leftPt[0] + (j*xdist*180/Math.PI);
        gridPt = {loc:[parseFloat(lng),parseFloat(lat)],gridsizex:j10,gridsizey:i10};
        sites.forEach(function(site,k){
-         //var gridsize = 1;
-         //if ((i%10)==0 && (j%10)==0){gridsize = 10};
-         //could just have gridsizei and gridsizek - then search for both == 10, etc. (or %, but have to see if that is slower)
-         //instead of calculating distance and angle, could have i and k of closest gript to
-         //each monitor and then have angle and distance calculated from that...
           dist = calcDistance(lng,site.loc.coordinates[0],lat,site.loc.coordinates[1]) * 6378.1; //6,378.1 is km in radius of earth
           Dist2 = Math.pow(dist,2);
           angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
           gridPt[site.AQSID] = {angle:angle,distance:dist,Dist2:Dist2};
         });
         GridPoints.insert(gridPt);
-     })
-  });
+     }
+  };
   console.log('makeBaseGrid ended',Date.now()-begintime)//196000 for 30000 pts
   GridPoints._ensureIndex({ loc: '2dsphere' });
   return
@@ -255,7 +261,7 @@ Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
     makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]]);
   }
-  //makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
+  makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
 
 
 });

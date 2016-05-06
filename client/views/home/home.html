@@ -1,7 +1,15 @@
 <template name="home">
   <div class="ui message">
       <div class="header">
-          pollutant: {{pollutant}}
+        <label>Pollutant: </label>
+        <select id="pollutpick">
+          <option value="{{pollutant}}" selected>{{pollutant}}</option>
+          <option value="PM25">Particulate Matter (2.5)</option>
+          <option value="RHUM">Relative Humidity</option>
+          <option value="BARPR">Barometric Pressure</option>
+          <option value="SRAD">Solar Radiation</option>
+        </select>
+
       </div>
       <div class="inline field">
           <label>Select Date: </label>
