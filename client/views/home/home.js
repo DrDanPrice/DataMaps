@@ -26,8 +26,8 @@ Template.home.onRendered(function () {
 
     });
     Meteor.subscribe('gridvals');
-    GridValues.find({$and: [ { gridsizex : 10 }, { gridsizey : 10 }]}).observeChanges({
-    //GridValues.find().observeChanges({
+    //GridValues.find({$and: [ { gridsizex : 10 }, { gridsizey : 10 }]}).observeChanges({
+    GridValues.find().observeChanges({
     //
 
     //then need to figure out how to assign right range
@@ -39,7 +39,7 @@ Template.home.onRendered(function () {
           if (O3val>40) {AQIcolor='#F6EC26'};
           if (O3val>48) {AQIcolor='#ffcce6'};
           if (O3val>56) {AQIcolor='#ff0000'};
-          var circle = L.circle([pt.loc[1], pt.loc[0]], 5000, {
+          var circle = L.circle([pt.loc[1], pt.loc[0]], 200, {
             color: AQIcolor,
             fillColor: AQIcolor,
             fillOpacity: 0.2

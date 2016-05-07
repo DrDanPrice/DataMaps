@@ -55,8 +55,6 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
      for (var j = 1; j<horizDist*6378.1*latlngRatio;j++){
        if (j10>10){j10=0};
        j10++;
-       //perhaps save latlngRatio and then calculate angle on fly? (not have two steps?)
-       //var xdist = horizDist/(horizDist*6378.1);
        lng = leftPt[0] + (j*xdist*180/Math.PI);
        gridPt = {loc:[parseFloat(lng),parseFloat(lat)],latlngRatio:latlngRatio,gridsizex:j10,gridsizey:i10};
        GridPoints.insert(gridPt);
@@ -133,7 +131,7 @@ var makeGridatTime = function(bbox,beginepoch,endepoch){
   //denominator = 1/dist + 1/dist2 etc. //or dist*dist
   //radial gaussian ??
   //pull values from 6 before beginepoch
-  //value = 6*v1+5*v2etc.  /6!  //what are we doing with wind angle??
+  //value = 6*v1+5*v2etc.  /6!
 
 var gridpoints = GridPoints.find(
   {
@@ -178,6 +176,8 @@ var gridpoints = GridPoints.find(
           AQSID: 1,
           hourlyParameters: 1,
           dist: "$dist"//,
+          //angle: { $multiply: [ pt.latlngRatio, <expression2>, ... ] }
+          //don't have trig in $project, so calculate from pt.loc?
         }
       }
     ],
@@ -215,11 +215,42 @@ var gridpoints = GridPoints.find(
 GridValues._ensureIndex({ loc: '2dsphere' });
 console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
 }; //end of makeGridatTime
+var boundbox = [
+            [
+              -95.55084228515625,
+              30.28990324883237
+            ],
+            [
+              -95.99029541015625,
+              30.085731229616634
+            ],
+            [
+              -95.96282958984375,
+              29.11857441491087
+            ],
+            [
+              -95.55084228515625,
+              28.703766775462204
+            ],
+            [
+              -94.8175048828125,
+              29.243270277106987
+            ],
+            [
+              -94.9822998046875,
+              30.166500980766052
+            ],
+            [
+              -95.55084228515625,
+              30.28990324883237
+            ]
+          ];
 Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
-    makeBaseGrid([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]]);
+    //makeBaseGrid([[-94.5,29.0],[-96.5,29.0],[-96.5,31],[-94.5,31.0],[-94.5,29.0]]);
+    makeBaseGrid(boundbox);
   }
-  makeGridatTime([[-94.5,29.0],[-96,29.0],[-96,30],[-94.5,30.0],[-94.5,29.0]],Date.now(),Date.now()-3000);
+  //makeGridatTime(boundbox,Date.now(),Date.now()-3000);
 
 
 });
