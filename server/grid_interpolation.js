@@ -38,41 +38,28 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
   //later: check on whether gridstep is valid; if more than one topPt, go left, else start at it?
   //for now, assume it's a square.
   var vertDist = calcDistance(leftPt[0],leftPt[0],topPt[1],bottomPt[1]);
-  var latstep = calcDistance(leftPt[0],leftPt[0],28.0,27.0);
-  //var vertlatstep = parseInt(latstep*6378.1);// *(180/Math.PI); 111km
-
-  //var vgridstep = parseInt(vertDist*6378.1); //get it on the km grid
-  //var vertical = _.range(0,vertDist,vertDist/vertlatstep); //vertDist/vgridstep);
-
-  //to do correctly, run each through calcDistance? or make a verticalStep and a horizStep
+  var firsttime = Date.now();
+  var latLngth = calcDistance(leftPt[0],leftPt[0],28.0,27.0);
+  var ydist = 1/6378.1;//for one km
   var i10 = 0;
   for (var i = 1; i<vertDist*6378.1; i++){
      if (i10>10){i10=0};
      i10++;
-     var ydist = 1/6378.1;// vertDist/(vertDist*6378.1);
-     lat = topPt[1] + i*ydist*(180/Math.PI);
+     var lngLngth = calcDistance(leftPt[0],leftPt[0]+1,lat,lat);
+     var latlngRatio = latLngth/lngLngth;
+     var lat = topPt[1] + i*ydist*(180/Math.PI);
+     var beginhoriztime = Date.now();
      var horizDist = calcDistance(leftPt[0],rightPt[0],lat,lat);
-     var lngstep = calcDistance(leftPt[0],leftPt[0]+1,lat,lat);
-     //var horizstep = parseInt(lngstep*6378.1);
-     var xdist = ydist; //((horizDist*latstep)/vertDist)/// lngstep/horizstep; //should give radians for 1km
-     console.log(ydist)
-     console.log('xdist',xdist)
-     //var hgridstep = parseInt(horizDist*6378.1);
-     //var horiz = _.range(0,horizDist,horizDist/horizstep); //horizDist/(hgridstep));
+     var xdist = ydist * latlngRatio;
      var j10 = 0;
-     for (var j = 1; j<horizDist*6378.1;j++){
+     for (var j = 1; j<horizDist*6378.1*latlngRatio;j++){
        if (j10>10){j10=0};
        j10++;
+       //perhaps save latlngRatio and then calculate angle on fly? (not have two steps?)
        //var xdist = horizDist/(horizDist*6378.1);
        lng = leftPt[0] + (j*xdist*180/Math.PI);
-       gridPt = {loc:[parseFloat(lng),parseFloat(lat)],gridsizex:j10,gridsizey:i10};
-       sites.forEach(function(site,k){
-          dist = calcDistance(lng,site.loc.coordinates[0],lat,site.loc.coordinates[1]) * 6378.1; //6,378.1 is km in radius of earth
-          Dist2 = Math.pow(dist,2);
-          angle = Math.atan2(site.loc.coordinates[0]-lng,site.loc.coordinates[1]-lat) / radConvert;
-          gridPt[site.AQSID] = {angle:angle,distance:dist,Dist2:Dist2};
-        });
-        GridPoints.insert(gridPt);
+       gridPt = {loc:[parseFloat(lng),parseFloat(lat)],latlngRatio:latlngRatio,gridsizex:j10,gridsizey:i10};
+       GridPoints.insert(gridPt);
      }
   };
   console.log('makeBaseGrid ended',Date.now()-begintime)//196000 for 30000 pts
@@ -181,7 +168,6 @@ var gridpoints = GridPoints.find(
         //distanceMultiplier: 6378.1,
         maxDistance: 30000, //seems to already be in meters, not radians
         //query: { type: "public" },
-        //includeLocs: "includedMonitors",
         //num: 3,
         spherical: true
         }
@@ -192,24 +178,11 @@ var gridpoints = GridPoints.find(
           AQSID: 1,
           hourlyParameters: 1,
           dist: "$dist"//,
-          //idwDist: { $divide: [ 1, { $multiply: [ "$dist", "$dist" ] } ] }
-          //idwVals: { $divide: [ '$thepollutval',{ $ multiply: [ "$dist", "$dist" ]}]}
         }
-      // },
-      // {
-      //   $group: {
-      //     "_id": "$AQSID",
-      //     "count" : { $sum: 1 },
-      //     "distances4idw" : { $addToSet:  "$idwDist"
-      //   }
-      //}
       }
     ],
   Meteor.bindEnvironment(
       function (err, result) {
-        //if(result){
-            //console.log('result',result)
-          //}
            _.each(result, function (e) {
              var dist2 = e.dist*e.dist;
              if (e.hourlyParameters){
@@ -220,20 +193,13 @@ var gridpoints = GridPoints.find(
                  IDWObj['IDWnom_'+paramname] += Number(p.value)/dist2;
                  IDWObj['IDWdenom_'+paramname] += Number(1.0)/dist2;
                  IDWObj['IDWcount_'+paramname] += Number(1.0);
-                 //console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
                });
             };
-          //
-          //   //need to make test data
-          //   //should be able to go through each pollutant and set out a numerator and denom
-             //console.log('each point ended',Date.now()-begintime)
            });
            for (key in IDWObj){
              for (ind in AirNowHourlyParamNames){
                var type = AirNowHourlyParamNames[ind];
-               //console.log(IDWObj['IDWcount_'+type],(IDWObj['IDWcount_'+type]>0))
                if (IDWObj['IDWcount_'+type]>0){
-                 //console.log('cnt',IDWObj['IDWcount_'+type])
                  IDWeights[type] = (IDWObj['IDWnom_'+type]/IDWObj['IDWcount_'+type]) / (IDWObj['IDWdenom_'+type]/IDWObj['IDWcount_'+type]);
                }
              }
@@ -241,18 +207,10 @@ var gridpoints = GridPoints.find(
           if(err){
             console.log('error in aggregation at GridPoints: ',err)
           };
-          GridValues.insert(IDWeights) //should be the value aggregated...
-        //  console.log(IDWeights)
-        //  console.log(GridValues.find().count())
+          GridValues.insert(IDWeights);
         }
       )
 );
-//update or insert into new grIDVals collection - then run another pipeline on
-//either a publish or just to create the idws for each - have to total and divide
-//by number of valid - count won't work for all pollutants
-//and wind direction...
-
-  //GridValues.insert(IDWeights) //should be the value aggregated...
 });//end of gridpoints.forEach
 GridValues._ensureIndex({ loc: '2dsphere' });
 console.log('makeGridatTime ended',Date.now()-begintime) //30 seconds doing nothing but finding everything inside 30000
