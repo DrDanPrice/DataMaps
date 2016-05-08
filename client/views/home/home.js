@@ -56,13 +56,13 @@ Template.home.onRendered(function () {
           //AQmap.fitBounds(polyline.getBounds());
           var radius = 5500;
           //if single km, should be about 150
+          var opacity = 0.6;
           var circle = L.circle([pt.loc[1], pt.loc[0]], radius, {
             stroke: false,
             color: AQIcolor,
             fillColor: AQIcolor,
-            fillOpacity: 0.6
+            fillOpacity: opacity
           }).addTo(AQmap);
-
           //    console.log(pt)
                 // var marker = L.marker([pt.loc[1], pt.loc[0]], {
                //}).addTo(AQmap);
