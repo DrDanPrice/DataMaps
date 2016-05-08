@@ -55,8 +55,10 @@ makeBaseGrid = function (bbox){  //bbox is coming in lng/lat
      for (var j = 1; j<horizDist*6378.1*latlngRatio;j++){
        if (j10>10){j10=0};
        j10++;
+       var grid10 = false;
+       if (j10==10 && i10 == 10){grid10 = true}; //since it's easier to calculate here and faster for boolean lookup from Mongo
        lng = leftPt[0] + (j*xdist*180/Math.PI);
-       gridPt = {loc:[parseFloat(lng),parseFloat(lat)],latlngRatio:latlngRatio,gridsizex:j10,gridsizey:i10};
+       gridPt = {loc:[parseFloat(lng),parseFloat(lat)],latlngRatio:latlngRatio,grid10:grid10};
        GridPoints.insert(gridPt);
      }
   };
@@ -149,8 +151,7 @@ var gridpoints = GridPoints.find(
     //AirNow.gov hourly :https://docs.airnowapi.org/docs/HourlyDataFactSheet.pdf
     var IDWeights = {};
     IDWeights['loc'] = pt.loc;
-    IDWeights['gridsizex'] = pt.gridsizex;
-    IDWeights['gridsizey'] = pt.gridsizey;
+    IDWeights['grid10'] = pt.grid10;
     var IDWObj = {};
     //make a function call, so not just AirNow data
     for (var i=0;i<AirNowHourlyParamNames.length;i++){
@@ -163,19 +164,20 @@ var gridpoints = GridPoints.find(
      $geoNear: { //$geoNear has to be first in agg pipeline
         near: { type: "Point", coordinates: pt.loc },
         distanceField: "dist", //already in meters
-        //distanceMultiplier: 6378.1,
-        maxDistance: 30000, //seems to already be in meters, not radians
-        //query: { type: "public" },
-        //num: 3,
+        maxDistance: 30000,
+        //query: { $and : {epoch: {$gt : beginepoch}, {$lt : endEpoch} } },
         spherical: true
         }
       },
+      //$group on epochs, OR $project on only the most recent epoch times then $group after!!
       {
         $project: {
           _id: 1,
           AQSID: 1,
+          loc: 1,
           hourlyParameters: 1,
           dist: "$dist"//,
+          //how can I search through times - I can project an array of values??
           //angle: { $multiply: [ pt.latlngRatio, <expression2>, ... ] }
           //don't have trig in $project, so calculate from pt.loc?
         }
@@ -183,13 +185,16 @@ var gridpoints = GridPoints.find(
     ],
   Meteor.bindEnvironment(
       function (err, result) {
-           _.each(result, function (e) {
+          _.each(result, function (e) {
+             var angle = Math.atan2(e.loc.coordinates[0]-pt.loc[0],e.loc.coordinates[1]-pt.loc[1]) / radConvert;
              var dist2 = e.dist*e.dist;
              if (e.hourlyParameters){
                _.each(e.hourlyParameters,function(p){
                  var paramname = p['parameter name']
                  if (paramname == 'PM2.5'){paramname = 'PM25'};
                  if (paramname == 'PM2.5-24HR'){paramname = 'PM25-24HR'};
+                 if (paramname == 'WD'){console.log('winddirection',p)};
+                  //need to calculate vector for wind at point,
                  IDWObj['IDWnom_'+paramname] += Number(p.value)/dist2;
                  IDWObj['IDWdenom_'+paramname] += Number(1.0)/dist2;
                  IDWObj['IDWcount_'+paramname] += Number(1.0);
@@ -247,7 +252,6 @@ var boundbox = [
           ];
 Meteor.startup(function(){
   if (GridPoints.find().count() == 0){
-    //makeBaseGrid([[-94.5,29.0],[-96.5,29.0],[-96.5,31],[-94.5,31.0],[-94.5,29.0]]);
     makeBaseGrid(boundbox);
   }
   //makeGridatTime(boundbox,Date.now(),Date.now()-3000);

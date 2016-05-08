@@ -25,10 +25,14 @@ Template.home.onRendered(function () {
             } //end of added
 
     });
+
+    //at some point, add workers: https://github.com/aparshin/leaflet-fractal/blob/master/FractalLayer.js
+    //https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers
+    //but no object creation in Leaflet: https://github.com/Leaflet/Leaflet/issues/2625
     Meteor.subscribe('gridvals');
+    var latlngs = [];
     //GridValues.find({$and: [ { gridsizex : 10 }, { gridsizey : 10 }]}).observeChanges({
-    GridValues.find().observeChanges({
-    //
+    GridValues.find({grid10:true}).observeChanges({
 
     //then need to figure out how to assign right range
         added: function (id, pt) {
@@ -39,23 +43,39 @@ Template.home.onRendered(function () {
           if (O3val>40) {AQIcolor='#F6EC26'};
           if (O3val>48) {AQIcolor='#ffcce6'};
           if (O3val>56) {AQIcolor='#ff0000'};
-          var circle = L.circle([pt.loc[1], pt.loc[0]], 200, {
+          // var polygon = L.polygon([
+          //     [pt.loc[1]+.053, pt.loc[0]+.056],
+          //     [pt.loc[1]-.053, pt.loc[0]+.056],
+          //     [pt.loc[1]-.053, pt.loc[0]-.056],
+          //     [pt.loc[1]+.053, pt.loc[0]-.056]],
+          //     {color: AQIcolor,stroke: false,
+          //       fillColor: AQIcolor,fillOpacity: 0.6})
+          //       .addTo(AQmap);
+        //  latlngs.push([pt.loc[1], pt.loc[0]]); //not in order
+        //  var polyline = L.polyline(latlngs, {color: 'red'}).addTo(AQmap);
+          //AQmap.fitBounds(polyline.getBounds());
+          var radius = 5500;
+          //if single km, should be about 150
+          var circle = L.circle([pt.loc[1], pt.loc[0]], radius, {
+            stroke: false,
             color: AQIcolor,
             fillColor: AQIcolor,
-            fillOpacity: 0.2
+            fillOpacity: 0.6
           }).addTo(AQmap);
+
           //    console.log(pt)
                 // var marker = L.marker([pt.loc[1], pt.loc[0]], {
                //}).addTo(AQmap);
             } //end of added
-
     });
 
 
+    //AQmap.fitBounds(polyline.getBounds());
     $('#displayMap').css('height', window.innerHeight - 20);
     L.Icon.Default.imagePath = 'packages/bevanhunt_leaflet/images';
 
     AQmap.setView([latude, lngtude], 9);
+
 
     L.tileLayer.provider('OpenStreetMap.DE').addTo(AQmap);
 
