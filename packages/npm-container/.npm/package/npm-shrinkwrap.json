@@ -3,27 +3,27 @@
     "csv": {
       "version": "0.4.5",
       "resolved": "https://registry.npmjs.org/csv/-/csv-0.4.5.tgz",
-      "from": "csv@0.4.5",
+      "from": "https://registry.npmjs.org/csv/-/csv-0.4.5.tgz",
       "dependencies": {
         "csv-generate": {
           "version": "0.0.6",
           "resolved": "https://registry.npmjs.org/csv-generate/-/csv-generate-0.0.6.tgz",
-          "from": "csv-generate@0.0.6"
+          "from": "https://registry.npmjs.org/csv-generate/-/csv-generate-0.0.6.tgz"
         },
         "csv-parse": {
           "version": "0.1.4",
           "resolved": "https://registry.npmjs.org/csv-parse/-/csv-parse-0.1.4.tgz",
-          "from": "csv-parse@0.1.4"
+          "from": "https://registry.npmjs.org/csv-parse/-/csv-parse-0.1.4.tgz"
         },
         "csv-stringify": {
           "version": "0.0.8",
           "resolved": "https://registry.npmjs.org/csv-stringify/-/csv-stringify-0.0.8.tgz",
-          "from": "csv-stringify@0.0.8"
+          "from": "https://registry.npmjs.org/csv-stringify/-/csv-stringify-0.0.8.tgz"
         },
         "stream-transform": {
           "version": "0.1.0",
           "resolved": "https://registry.npmjs.org/stream-transform/-/stream-transform-0.1.0.tgz",
-          "from": "stream-transform@0.1.0"
+          "from": "https://registry.npmjs.org/stream-transform/-/stream-transform-0.1.0.tgz"
         }
       }
     }
